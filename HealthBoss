@@ -1,0 +1,130 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local uiName = "ZorVexBossMonitor"
+if playerGui:FindFirstChild(uiName) then
+	playerGui[uiName]:Destroy()
+end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = uiName
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 182, 0, 52)
+mainFrame.Position = UDim2.new(0.5, -91, 0, 14)
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+mainFrame.BackgroundTransparency = 0.1
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 8)
+mainCorner.Parent = mainFrame
+
+local function createShadow(thickness, transparency)
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = thickness
+	stroke.Transparency = transparency
+	stroke.Color = Color3.fromRGB(0, 0, 0)
+	stroke.Parent = mainFrame
+	return stroke
+end
+
+createShadow(4.2, 0.900)
+createShadow(3.5, 0.900)
+createShadow(2.8, 0.900)
+createShadow(2.1, 0.900)
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Name = "TitleLabel"
+titleLabel.Size = UDim2.new(1, -20, 0, 18)
+titleLabel.Position = UDim2.new(0, 10, 0, 8)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.Text = "Waiting For The Boss"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextSize = 10
+titleLabel.TextXAlignment = Enum.TextXAlignment.Center
+titleLabel.Parent = mainFrame
+
+local titleStroke = Instance.new("UIStroke")
+titleStroke.Name = "TitleStroke"
+titleStroke.Thickness = 0.9
+titleStroke.Color = Color3.fromRGB(255, 255, 255)
+titleStroke.Transparency = 1
+titleStroke.Parent = titleLabel
+
+local hpText = Instance.new("TextLabel")
+hpText.Name = "HpText"
+hpText.Size = UDim2.new(1, -20, 0, 14)
+hpText.Position = UDim2.new(0, 10, 0, 26)
+hpText.BackgroundTransparency = 1
+hpText.Font = Enum.Font.GothamBold
+hpText.Text = "..........."
+hpText.TextColor3 = Color3.fromRGB(200, 200, 200)
+hpText.TextSize = 8
+hpText.TextXAlignment = Enum.TextXAlignment.Center
+hpText.Parent = mainFrame
+
+local bossConfig = {
+	[1] = { name = "Common Boss", color = Color3.fromRGB(160, 160, 160), hasOutline = true },
+	[2] = { name = "Rare Boss", color = Color3.fromRGB(52, 152, 219), hasOutline = false },
+	[3] = { name = "Epic Boss", color = Color3.fromRGB(155, 89, 182), hasOutline = false },
+	[4] = { name = "Legendary Boss", color = Color3.fromRGB(241, 196, 15), hasOutline = false },
+	[5] = { name = "Mythic Boss", color = Color3.fromRGB(146, 0, 0), hasOutline = false }
+}
+
+task.spawn(function()
+	while true do
+		task.wait(0.1)
+		local bossArena = workspace:FindFirstChild("Events") and workspace.Events:FindFirstChild("BossArena")
+		
+		local activeBossId = nil
+		local activeBossObj = nil
+		
+		if bossArena then
+			for i = 1, 5 do
+				local boss = bossArena:FindFirstChild("Boss" .. i)
+				if boss then
+					local health = tonumber(boss:GetAttribute("Health")) or 0
+					if health > 0 then
+						activeBossId = i
+						activeBossObj = boss
+						break
+					end
+				end
+			end
+		end
+		
+		if activeBossObj and activeBossId then
+			local config = bossConfig[activeBossId]
+			local health = tonumber(activeBossObj:GetAttribute("Health")) or 0
+			local maxHealth = tonumber(activeBossObj:GetAttribute("MaxHealth")) or 100
+			if maxHealth <= 0 then maxHealth = 1 end
+			
+			titleLabel.Text = config.name
+			titleLabel.TextColor3 = config.color
+			
+			if config.hasOutline then
+				titleStroke.Transparency = 0
+			else
+				titleStroke.Transparency = 1
+			end
+			
+			hpText.Text = string.format("%d / %d", health, maxHealth)
+			hpText.TextColor3 = config.color
+		else
+			titleLabel.Text = "Waiting For The Boss"
+			titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+			titleStroke.Transparency = 1
+			
+			hpText.Text = "..........."
+			hpText.TextColor3 = Color3.fromRGB(200, 200, 200)
+		end
+	end
+end)
