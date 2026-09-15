@@ -16,6 +16,22 @@ local isRunning = true
 local currentStage = 1
 local wasFlying = false
 
+local function unequipAllTools()
+    local character = player.Character
+    if not character then return end
+    
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid:UnequipTools()
+    end
+    
+    for _, item in ipairs(character:GetChildren()) do
+        if item:IsA("Tool") then
+            item.Parent = player.Backpack
+        end
+    end
+end
+
 _G.ToggleFastPunch = function(bool)
     _G.FastPunch = bool
     if bool then
@@ -181,6 +197,7 @@ toggleButton.MouseButton1Click:Connect(function()
     else
         toggleButton.Text = "Off"
         if _G.ToggleFastPunch then _G.ToggleFastPunch(false) end
+        unequipAllTools() -- <--- TEMPELKAN DI SINI
         local _, hrp, hum = getCharacterParts()
         if hrp and hum then
             setBossFlying(false, hrp, hum)
@@ -348,6 +365,8 @@ task.spawn(function()
         if _G.ToggleFastPunch then
             _G.ToggleFastPunch(false)
         end
+
+        unequipAllTools()
 
         setBossFlying(false, hrp, hum)
         task.wait(0.3)
