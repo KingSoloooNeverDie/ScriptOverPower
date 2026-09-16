@@ -355,7 +355,7 @@ task.spawn(function()
                 local dir = (destPos - hrp.Position)
                 
                 if dir.Magnitude > 3 then
-                    bossFlyBV.Velocity = dir.Unit * 180
+                    bossFlyBV.Velocity = dir.Unit * 700
                 else
                     bossFlyBV.Velocity = Vector3.zero
                 end
