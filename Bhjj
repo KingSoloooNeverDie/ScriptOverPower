@@ -1,0 +1,404 @@
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
+local SEARCH_KEYWORDS = {"boss1", "boss2", "boss3", "boss4", "boss5", "bossrainbow"} 
+
+local WAIT_POSITION = CFrame.new(-1.89, 35.90, -1006.04)
+
+local isRunning = true
+local currentStage = 1
+local wasFlying = false
+
+local function unequipAllTools()
+    local character = player.Character
+    if not character then return end
+    
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid:UnequipTools()
+    end
+    
+    for _, item in ipairs(character:GetChildren()) do
+        if item:IsA("Tool") then
+            item.Parent = player.Backpack
+        end
+    end
+end
+
+_G.ToggleFastPunch = function(bool)
+    _G.FastPunch = bool
+    if bool then
+        task.spawn(function()
+            while _G.FastPunch do
+                local character = player.Character
+                if character then
+                    local punch = character:FindFirstChild("Punch") or player.Backpack:FindFirstChild("Punch")
+                    if punch then
+                        if punch:FindFirstChild("attackTime") then punch.attackTime.Value = 0 end
+                        if punch.Parent ~= character and character:FindFirstChild("Humanoid") then
+                            character.Humanoid:EquipTool(punch)
+                        end
+                        punch:Activate()
+                    end
+                end
+                task.wait()
+            end
+        end)
+        task.spawn(function()
+            while _G.FastPunch do
+                local muscleEvent = player:FindFirstChild("muscleEvent") or ReplicatedStorage:FindFirstChild("muscleEvent")
+                if muscleEvent then
+                    muscleEvent:FireServer("punch", "rightHand")
+                    muscleEvent:FireServer("punch", "leftHand")
+                end
+                task.wait()
+            end
+        end)
+    else
+        local punch = player.Character and (player.Character:FindFirstChild("Punch") or player.Backpack:FindFirstChild("Punch"))
+        if punch and punch:FindFirstChild("attackTime") then 
+            punch.attackTime.Value = 0.35 
+        end
+    end
+end
+
+local function getCharacterParts()
+    local char = player.Character
+    if not char then return nil, nil, nil end
+    return char, char:FindFirstChild("HumanoidRootPart"), char:FindFirstChild("Humanoid")
+end
+
+local bossFlyBV = nil
+local bossFlyBG = nil
+local emoteIdleName, emoteIdleId = "GodlikeIdle", 81359407734079 
+
+local function playBossEmote(hum, name)
+    local animator = hum:FindFirstChildOfClass("Animator")
+    if not animator then return end
+    pcall(function() 
+        hum:PlayEmote(name)
+        task.delay(0.05, function() 
+            for _, track in pairs(animator:GetPlayingAnimationTracks()) do 
+                if track.IsPlaying then 
+                    track.Priority = Enum.AnimationPriority.Action4
+                    track.Looped = true
+                    track:AdjustSpeed(1) 
+                end 
+            end 
+        end) 
+    end)
+end
+
+local function setBossFlying(enabled, hrp, hum)
+    if not hrp or not hum then return end
+    
+    local desc = hum:FindFirstChildOfClass("HumanoidDescription")
+    if desc then
+        pcall(function() desc:SetEmotes({[emoteIdleName] = {emoteIdleId}}) end)
+    end
+
+    if enabled then
+        wasFlying = true
+        hum:SetStateEnabled(Enum.HumanoidStateType.Running, false)
+        hum:ChangeState(Enum.HumanoidStateType.Physics)
+        
+        if not bossFlyBV or bossFlyBV.Parent ~= hrp then
+            bossFlyBV = Instance.new("BodyVelocity")
+            bossFlyBV.Name = "BossFlyBV"
+            bossFlyBV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            bossFlyBV.Velocity = Vector3.zero
+            bossFlyBV.Parent = hrp
+        end
+        
+        if not bossFlyBG or bossFlyBG.Parent ~= hrp then
+            bossFlyBG = Instance.new("BodyGyro")
+            bossFlyBG.Name = "BossFlyBG"
+            bossFlyBG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+            bossFlyBG.P = 5000
+            bossFlyBG.Parent = hrp
+        end
+    else
+        if wasFlying then
+            wasFlying = false
+            if bossFlyBV then bossFlyBV:Destroy() bossFlyBV = nil end
+            if bossFlyBG then bossFlyBG:Destroy() bossFlyBG = nil end
+            hum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+            hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+        end
+    end
+end
+
+-- Membuat UI Toggle yang transparan, teks hitam, dan bisa di-drag
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "BossFarmGui"
+pcall(function() screenGui.Parent = CoreGui end)
+if not screenGui.Parent then
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+end
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "ToggleButton"
+toggleButton.Size = UDim2.new(0, 140, 0, 40)
+toggleButton.Position = UDim2.new(0, 50, 0, 50)
+toggleButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.BackgroundTransparency = 0.3
+toggleButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+toggleButton.TextSize = 16
+toggleButton.Font = Enum.Font.SourceSansBold
+toggleButton.Text = "Kill Boss"
+toggleButton.Parent = screenGui
+
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(0, 8)
+uiCorner.Parent = toggleButton
+
+-- Logika Dragging UI
+local dragging, dragInput, dragStart, startPos
+
+toggleButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = toggleButton.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+toggleButton.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        toggleButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- Fungsi Klik Toggle On/Off
+toggleButton.MouseButton1Click:Connect(function()
+    isRunning = not isRunning
+    if isRunning then
+        toggleButton.Text = "Kill Boss"
+    else
+        toggleButton.Text = "Off"
+        if _G.ToggleFastPunch then _G.ToggleFastPunch(false) end
+        unequipAllTools() -- <--- TEMPELKAN DI SINI
+        local _, hrp, hum = getCharacterParts()
+        if hrp and hum then
+            setBossFlying(false, hrp, hum)
+        end
+    end
+end)
+
+-- Background Task untuk Klaim Peti
+task.spawn(function()
+    while true do
+        if currentStage == 4 and isRunning then
+            local _, hrp = getCharacterParts()
+            if hrp then
+                for _, obj in ipairs(Workspace:GetDescendants()) do
+                    if not isRunning then break end
+                    if obj.Name:find("BossChest") then
+                        pcall(function()
+                            if obj:IsA("Model") then
+                                for _, part in ipairs(obj:GetDescendants()) do
+                                    if part:IsA("BasePart") and (part.Name:find("Handle") or part.Name:find("Center")) then
+                                        firetouchinterest(hrp, part, 0)
+                                        firetouchinterest(hrp, part, 1)
+                                    end
+                                    local prompt = part:FindFirstChildOfClass("ProximityPrompt")
+                                    if prompt then fireproximityprompt(prompt) end
+                                end
+                            elseif obj:IsA("BasePart") then
+                                firetouchinterest(hrp, obj, 0)
+                                firetouchinterest(hrp, obj, 1)
+                                local prompt = obj:FindFirstChildOfClass("ProximityPrompt")
+                                if prompt then fireproximityprompt(prompt) end
+                            end
+                        end)
+                    end
+                end
+            end
+        end
+        task.wait(0.2)
+    end
+end)
+
+-- Main Loop Otomasi Bos
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if not isRunning then continue end
+
+        local _, hrp, hum = getCharacterParts()
+        if not hrp or not hum then
+            task.wait(1)
+            continue
+        end
+
+        currentStage = 1
+        if _G.ToggleFastPunch then _G.ToggleFastPunch(false) end
+        setBossFlying(false, hrp, hum)
+        
+        hrp.CFrame = WAIT_POSITION
+        
+        local activeBossModel = nil
+        
+        while isRunning do
+            for _, obj in ipairs(Workspace:GetDescendants()) do
+                if not isRunning then break end
+                if obj:IsA("Model") and Players:GetPlayerFromCharacter(obj) == nil then
+                    local objNameLower = string.lower(obj.Name)
+                    local matched = false
+                    
+                    for _, keyword in ipairs(SEARCH_KEYWORDS) do
+                        if string.find(objNameLower, keyword) then
+                            matched = true
+                            break
+                        end
+                    end
+                    
+                    if matched then
+                        local health = obj:GetAttribute("Health")
+                        if health == nil or health > 0 then
+                            activeBossModel = obj
+                            break
+                        end
+                    end
+                end
+            end
+            
+            if activeBossModel or not isRunning then
+                break
+            end
+            
+            task.wait(1)
+        end
+
+        if not isRunning then continue end
+
+        currentStage = 2
+        
+        setBossFlying(true, hrp, hum)
+        playBossEmote(hum, emoteIdleName)
+        
+        task.wait(2)
+        
+        if _G.ToggleFastPunch and isRunning then
+            _G.ToggleFastPunch(true)
+        end
+        
+        local offsetX, offsetY, offsetZ = 0, 100, 0
+        if activeBossModel then
+            local activeNameLower = string.lower(activeBossModel.Name)
+            if string.find(activeNameLower, "boss1") or string.find(activeNameLower, "boss2") or string.find(activeNameLower, "boss3") then
+                offsetX, offsetY, offsetZ = 0, 100, 0
+            elseif string.find(activeNameLower, "boss4") or string.find(activeNameLower, "boss5") or string.find(activeNameLower, "bossrainbow") then
+                offsetX, offsetY, offsetZ = 0, 145, 0
+            end
+        end
+        
+        while isRunning and activeBossModel and activeBossModel.Parent do
+            local health = activeBossModel:GetAttribute("Health")
+            if health and health <= 0 then
+                break
+            end
+            
+            local targetPos = nil
+            local root = activeBossModel:FindFirstChild("HumanoidRootPart") or activeBossModel:FindFirstChild("Torso") or activeBossModel:FindFirstChild("Head")
+            if root and root:IsA("BasePart") then
+                targetPos = root.Position
+            else
+                local success, modelPos = pcall(function() return activeBossModel:GetPivot().Position end)
+                if success and modelPos then targetPos = modelPos end
+            end
+            
+            if targetPos and bossFlyBV and bossFlyBG and hrp then
+                -- Menggunakan koordinat dunia (world space) agar posisi selalu tepat di atas bos tanpa terpengaruh rotasi model bos
+                local destPos = targetPos + Vector3.new(offsetX, offsetY, offsetZ)
+                local dir = (destPos - hrp.Position)
+                
+                if dir.Magnitude > 3 then
+                    bossFlyBV.Velocity = dir.Unit * 180
+                else
+                    bossFlyBV.Velocity = Vector3.zero
+                end
+                
+                local lookAtPos = Vector3.new(targetPos.X, hrp.Position.Y, targetPos.Z)
+                bossFlyBG.CFrame = CFrame.lookAt(hrp.Position, lookAtPos)
+            end
+            
+            pcall(function()
+                for _, part in ipairs(activeBossModel:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        local _, currentHrp = getCharacterParts()
+                        if currentHrp then
+                            for _, charPart in ipairs(player.Character:GetDescendants()) do
+                                if charPart:IsA("BasePart") then
+                                    firetouchinterest(charPart, part, 0)
+                                    firetouchinterest(charPart, part, 1)
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+            
+            task.wait(0.1)
+        end
+
+        if _G.ToggleFastPunch then
+            _G.ToggleFastPunch(false)
+        end
+
+        unequipAllTools()
+
+        setBossFlying(false, hrp, hum)
+        task.wait(0.3)
+
+        if not isRunning then continue end
+
+        currentStage = 3
+        local chestFound = false
+        local SEARCH_KEYWORD_CHEST = "chest_base"
+
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if string.find(string.lower(obj.Name), SEARCH_KEYWORD_CHEST) then
+                local targetPos = nil
+                if obj:IsA("Model") then
+                    local success, pos = pcall(function() return obj:GetPivot().Position end)
+                    if success and pos then targetPos = pos end
+                elseif obj:IsA("BasePart") then
+                    targetPos = obj.Position
+                end
+                
+                if targetPos then
+                    local offsetPos = targetPos + Vector3.new(-15, 4, 0)
+                    hrp.CFrame = CFrame.lookAt(offsetPos, targetPos)
+                    chestFound = true
+                    break
+                end
+            end
+        end
+
+        task.wait(0.5)
+
+        currentStage = 4
+        task.wait(5)
+    end
+end)
