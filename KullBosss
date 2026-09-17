@@ -176,7 +176,7 @@ local function isSpotClear(targetCFrame)
                 local otherHrp = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
                 if otherHrp then
                     local distance = (otherHrp.Position - targetPos).Magnitude
-                    if distance <= 2 then
+                    if distance <= 6 then
                         foundOtherPlayer = true
                         break
                     end
