@@ -10,11 +10,104 @@ local player = Players.LocalPlayer
 local camera = Workspace.CurrentCamera
 local SEARCH_KEYWORDS = {"boss1", "boss2", "boss3", "boss4", "boss5", "bossrainbow"} 
 
-local WAIT_POSITION = CFrame.new(-8790.79, 119.87, -5906.45, -0.85, -0.03, -0.53, -0.00, 1.00, -0.05, 0.53, -0.04, -0.85)
+-- DAFTAR 20 CFRAME POSISI WAIT
+local WAIT_POSITIONS = {
+    CFrame.new(-46.43, 53.68, -1004.79, 1.00, -0.00, 0.10, 0.00, 1.00, -0.00, -0.10, 0.00, 1.00),
+    CFrame.new(43.29, 53.68, -1000.73, 0.99, 0.00, 0.10, -0.00, 1.00, -0.00, -0.10, 0.00, 0.99),
+    CFrame.new(-191.31, 59.13, -1073.14, 0.75, -0.00, -0.66, 0.00, 1.00, -0.00, 0.66, -0.00, 0.75),
+    CFrame.new(-231.90, 78.85, -1124.21, 0.53, 0.00, -0.85, 0.00, 1.00, 0.00, 0.85, -0.00, 0.53),
+    CFrame.new(-275.95, 78.68, -1264.60, 0.06, -0.00, -1.00, -0.00, 1.00, -0.00, 1.00, 0.00, 0.06),
+    CFrame.new(-269.30, 59.13, -1332.82, -0.24, 0.00, -0.97, 0.00, 1.00, 0.00, 0.97, -0.00, -0.24),
+    CFrame.new(-244.94, 78.80, -1396.07, -0.45, -0.00, -0.89, -0.00, 1.00, -0.00, 0.89, -0.00, -0.45),
+    CFrame.new(-204.41, 59.13, -1456.39, -0.70, -0.00, -0.72, -0.00, 1.00, -0.00, 0.72, -0.00, -0.70),
+    CFrame.new(-150.22, 78.83, -1501.23, -0.83, -0.00, -0.56, -0.00, 1.00, 0.00, 0.56, 0.00, -0.83),
+    CFrame.new(-82.61, 59.13, -1532.40, -0.97, -0.00, -0.26, -0.00, 1.00, -0.00, 0.26, -0.00, -0.97),
+    CFrame.new(75.24, 59.13, -1532.98, -0.96, 0.00, 0.27, 0.00, 1.00, -0.00, -0.27, -0.00, -0.96),
+    CFrame.new(146.28, 78.78, -1501.64, -0.95, -0.00, 0.30, -0.00, 1.00, 0.00, -0.30, 0.00, -0.95),
+    CFrame.new(202.19, 59.13, -1452.75, -0.68, 0.00, 0.73, 0.00, 1.00, 0.00, -0.73, 0.00, -0.68),
+    CFrame.new(241.44, 78.81, -1395.97, -0.49, 0.00, 0.87, 0.00, 1.00, -0.00, -0.87, -0.00, -0.49),
+    CFrame.new(266.11, 59.13, -1333.99, -0.26, -0.00, 0.97, 0.00, 1.00, 0.00, -0.97, 0.00, -0.26),
+    CFrame.new(271.44, 78.85, -1264.41, -0.22, 0.00, 0.98, 0.00, 1.00, 0.00, -0.98, 0.00, -0.22),
+    CFrame.new(230.18, 78.42, -1124.05, 0.50, -0.00, 0.86, 0.00, 1.00, 0.00, -0.86, -0.00, 0.50),
+    CFrame.new(184.71, 59.13, -1071.45, 0.69, -0.00, 0.72, 0.00, 1.00, 0.00, -0.72, 0.00, 0.69),
+    CFrame.new(126.80, 78.43, -1032.65, 0.87, -0.00, 0.49, -0.00, 1.00, 0.00, -0.49, -0.00, 0.87),
+    CFrame.new(-130.80, 78.60, -1032.47, 0.88, 0.00, -0.48, -0.00, 1.00, 0.00, 0.48, -0.00, 0.88)
+}
+
+-- Variabel penyimpan posisi yang telah terkunci
+local savedWaitCFrame = nil
 
 local isRunning = true
 local currentStage = 1
 local wasFlying = false
+
+local function getCharacterParts()
+    local char = player.Character
+    if not char then return nil, nil, nil end
+    return char, char:FindFirstChild("HumanoidRootPart"), char:FindFirstChild("Humanoid")
+end
+
+-- Fungsi Pengecekan Pemain Lain dalam Radius 2 Studs selama 2 Detik
+local function isSpotClear(targetCFrame)
+    local targetPos = targetCFrame.Position
+    local checkDuration = 2
+    local checkInterval = 0.1
+    local elapsedTime = 0
+
+    while elapsedTime < checkDuration do
+        if not isRunning then return false end
+        
+        local foundOtherPlayer = false
+        for _, otherPlayer in ipairs(Players:GetPlayers()) do
+            if otherPlayer ~= player and otherPlayer.Character then
+                local otherHrp = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if otherHrp then
+                    local distance = (otherHrp.Position - targetPos).Magnitude
+                    if distance <= 2 then
+                        foundOtherPlayer = true
+                        break
+                    end
+                end
+            end
+        end
+
+        if foundOtherPlayer then
+            return false
+        end
+
+        task.wait(checkInterval)
+        elapsedTime = elapsedTime + checkInterval
+    end
+
+    return true
+end
+
+-- Fungsi Pencari & Pengunci Posisi Tunggu
+local function getOrFindWaitCFrame()
+    if savedWaitCFrame then
+        return savedWaitCFrame
+    end
+
+    for index, targetCFrame in ipairs(WAIT_POSITIONS) do
+        if not isRunning then break end
+        
+        local _, hrp, _ = getCharacterParts()
+        if hrp then
+            hrp.CFrame = targetCFrame
+            if bossFlyBG then
+                bossFlyBG.CFrame = targetCFrame
+            end
+        end
+
+        if isSpotClear(targetCFrame) then
+            savedWaitCFrame = targetCFrame
+            return savedWaitCFrame
+        end
+    end
+
+    savedWaitCFrame = WAIT_POSITIONS[1]
+    return savedWaitCFrame
+end
 
 local function unequipAllTools()
     local character = player.Character
@@ -78,12 +171,6 @@ _G.ToggleFastPunch = function(bool)
             punch.attackTime.Value = 0.35 
         end
     end
-end
-
-local function getCharacterParts()
-    local char = player.Character
-    if not char then return nil, nil, nil end
-    return char, char:FindFirstChild("HumanoidRootPart"), char:FindFirstChild("Humanoid")
 end
 
 local bossFlyBV = nil
@@ -273,10 +360,12 @@ task.spawn(function()
         task.wait(3)
         if not isRunning then continue end
         
-        -- UPDATED: Teleport ke WAIT_POSITION & kunci BodyGyro agar rotasi tidak membelok
-        hrp.CFrame = WAIT_POSITION
+        -- SISTEM 20 POSISI: Cari atau gunakan posisi CFrame yang tersimpan
+        local selectedWaitCFrame = getOrFindWaitCFrame()
+        
+        hrp.CFrame = selectedWaitCFrame
         if bossFlyBG then
-            bossFlyBG.CFrame = WAIT_POSITION
+            bossFlyBG.CFrame = selectedWaitCFrame
         end
         
         local activeBossModel = nil
