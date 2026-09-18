@@ -160,65 +160,62 @@ local function setBossFlying(enabled, hrp, hum)
     end
 end
 
--- Fungsi Pengecekan Pemain Lain dalam Radius 2 Studs
-local function isSpotClear(targetCFrame)
-    local targetPos = targetCFrame.Position
-    local checkDuration = 2
-    local checkInterval = 0.1
-    local elapsedTime = 0
+-- ====================================================================
+-- STAGE 1: TELEPORT FISIK & CEK 6 STUDS BERURUTAN (POLOS TANPA USERID)
+-- ====================================================================
+local CHECK_RADIUS = 6
 
-    while elapsedTime < checkDuration do
-        if not isRunning then return false end
-        
-        local foundOtherPlayer = false
-        for _, otherPlayer in ipairs(Players:GetPlayers()) do
-            if otherPlayer ~= player and otherPlayer.Character then
-                local otherHrp = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if otherHrp then
-                    local distance = (otherHrp.Position - targetPos).Magnitude
-                    if distance <= 6 then
-                        foundOtherPlayer = true
-                        break
-                    end
+local function isCurrentPositionClear()
+    local myHrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not myHrp then return false end
+
+    for _, otherPlayer in ipairs(Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHrp = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if otherHrp then
+                local distance = (otherHrp.Position - myHrp.Position).Magnitude
+                if distance <= CHECK_RADIUS then
+                    return false -- Ada player dalam radius 6 studs
                 end
             end
         end
-
-        if foundOtherPlayer then
-            return false
-        end
-
-        task.wait(checkInterval)
-        elapsedTime = elapsedTime + checkInterval
     end
 
-    return true
+    return true -- Area bersih
 end
 
--- Fungsi Pencari & Pengunci Posisi Tunggu
 local function getOrFindWaitCFrame()
+    local character = player.Character or player.CharacterAdded:Wait()
+    local hrp = character:WaitForChild("HumanoidRootPart")
+
+    -- 1. Cek posisi yang sudah terkunci dari putaran sebelumnya
     if savedWaitCFrame then
-        return savedWaitCFrame
-    end
+        hrp.CFrame = savedWaitCFrame
+        if bossFlyBG then bossFlyBG.CFrame = savedWaitCFrame end
 
-    for index, targetCFrame in ipairs(WAIT_POSITIONS) do
-        if not isRunning then break end
-        
-        local _, hrp, _ = getCharacterParts()
-        if hrp then
-            hrp.CFrame = targetCFrame
-            if bossFlyBG then
-                bossFlyBG.CFrame = targetCFrame
-            end
-        end
-
-        if isSpotClear(targetCFrame) then
-            savedWaitCFrame = targetCFrame
+        if isCurrentPositionClear() then
             return savedWaitCFrame
+        else
+            savedWaitCFrame = nil -- Jika sudah ditempati orang lain, lepas kunci
         end
     end
 
+    -- 2. Cek berurutan dari Spot 1 sampai Spot 20 secara langsung
+    for _, candidateCFrame in ipairs(WAIT_POSITIONS) do
+        hrp.CFrame = candidateCFrame
+        if bossFlyBG then bossFlyBG.CFrame = candidateCFrame end
+
+        if isCurrentPositionClear() then
+            savedWaitCFrame = candidateCFrame
+            return savedWaitCFrame -- KOSONG -> LANGSUNG LOCK & SELESAI!
+        end
+        -- TERISI -> LANGSUNG CONTINUED/GANTI KE SPOT BERIKUTNYA
+    end
+
+    -- Jika seluruh 20 spot terisi penuh, pakai spot nomor 1 sebagai default
     savedWaitCFrame = WAIT_POSITIONS[1]
+    hrp.CFrame = savedWaitCFrame
+    if bossFlyBG then bossFlyBG.CFrame = savedWaitCFrame end
     return savedWaitCFrame
 end
 
@@ -348,12 +345,8 @@ task.spawn(function()
         task.wait(3)
         if not isRunning then continue end
 
-        -- 2. Teleport ke 20 Posisi Wait (Mencari spot kosong)
+        -- 2. Teleport & Cari Spot Kosong Instan (Stage 1)
         local selectedWaitCFrame = getOrFindWaitCFrame()
-        hrp.CFrame = selectedWaitCFrame
-        if bossFlyBG then
-            bossFlyBG.CFrame = selectedWaitCFrame
-        end
 
         local activeBossModel = nil
 
