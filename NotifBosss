@@ -1,0 +1,154 @@
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+
+task.spawn(function()
+    task.wait(5) -- Menunggu 5 detik di server
+    
+    -- === BAGIAN 1: CEK BOSS & KIRIM WEBHOOK SEBELUM HOP ===
+    local bossFound = false
+    pcall(function()
+        local function getBossDetails()
+            local bossArena = workspace:FindFirstChild("Events") and workspace.Events:FindFirstChild("BossArena")
+            if not bossArena then 
+                return nil, nil, "" 
+            end
+
+            local bossRarities = {
+                ["Boss1"] = "Common Boss",
+                ["Boss2"] = "Rare Boss",
+                ["Boss3"] = "Epic Boss",
+                ["Boss4"] = "Legendary Boss",
+                ["Boss5"] = "Mythic Boss",
+                ["BossRainbow"] = "Rainbow Boss",
+                ["bossrainbow"] = "Rainbow Boss"
+            }
+
+            local bossImages = {
+                ["Boss1"] = "121593742977095",
+                ["Boss2"] = "113705733847361",
+                ["Boss3"] = "83905268798549",
+                ["Boss4"] = "94950578483251",
+                ["Boss5"] = "107595208296929",
+                ["BossRainbow"] = "107595208296929",
+                ["bossrainbow"] = "107595208296929"
+            }
+
+            for _, obj in ipairs(bossArena:GetChildren()) do
+                local rarityName = bossRarities[obj.Name]
+                if rarityName then
+                    local healthValue = obj:GetAttribute("Health") or "N/A"
+                    
+                    if type(healthValue) == "number" then
+                        local function formatNumber(n)
+                            if n < 1000 then return tostring(math.floor(n)) end
+                            local b = {"", "k", "M", "B", "T", "Qa", "Qi"}
+                            local i = math.min(math.floor(math.log10(n) / 3), #b - 1)
+                            return string.format("%.1f", math.floor((n / 10^(i * 3)) * 10) / 10):gsub("%.0$", "") .. b[i + 1]
+                        end
+                        healthValue = string.format("%s (%s)", tostring(math.floor(obj:GetAttribute("Health"))), formatNumber(healthValue))
+                    end
+
+                    local bossId = bossImages[obj.Name] or ""
+                    return rarityName, healthValue, bossId
+                end
+            end
+
+            return nil, nil, ""
+        end
+
+        local bossNameFormatted, bossHealth, bossId = getBossDetails()
+
+        if bossNameFormatted then
+            bossFound = true -- Menandakan boss ditemukan
+
+            local finalThumbnailUrl = ""
+            if bossId ~= "" then
+                local success, result = pcall(function()
+                    local response = game:HttpGet("https://thumbnails.roblox.com/v1/assets?assetIds="..bossId.."&size=420x420&format=Png&isCircular=false")
+                    local data = HttpService:JSONDecode(response)
+                    if data and data.data and data.data[1] then
+                        return data.data[1].imageUrl
+                    end
+                end)
+                if success and result then
+                    finalThumbnailUrl = result
+                end
+            end
+
+            (syn and syn.request or http and http.request or http_request or fluxus and fluxus.request or request)({
+                Url = "https://discord.com/api/webhooks/1533678800078901411/Gn-nZ5y4hC1zn70x6JXx77qwPRH0iLSpgViLzqMS7zQ689Pvzz_w2O6LQhAxi7Lt29as",
+                Method = "POST",
+                Headers = { ["Content-Type"] = "application/json" },
+                Body = HttpService:JSONEncode({
+                    ["embeds"] = {{
+                        ["title"] = "⛩️ **Boss Notify** ⛩️",
+                        ["color"] = 16777215,
+                        ["thumbnail"] = { 
+                            ["url"] = (finalThumbnailUrl ~= "" and finalThumbnailUrl) or (function() 
+                                local s, r = pcall(function() 
+                                    return HttpService:JSONDecode(game:HttpGet("https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds="..lp.UserId.."&size=420x420&format=Png&isCircular=false")) 
+                                end) 
+                                return s and r.data[1].imageUrl or "" 
+                            end)() 
+                        },
+                        ["fields"] = {
+                            {
+                                ["name"] = "**BOSS INFORMATION**",
+                                ["value"] = string.format("```Boss Name : %s\nHealth    : %s```", bossNameFormatted, tostring(bossHealth)),
+                                ["inline"] = false
+                            },
+                            {
+                                ["name"] = "**PLACE ID**",
+                                ["value"] = tostring(game.PlaceId),
+                                ["inline"] = false
+                            },
+                            {
+                                ["name"] = "**JOB ID**",
+                                ["value"] = tostring(game.JobId),
+                                ["inline"] = false
+                            }
+                        },
+                        ["footer"] = { ["text"] = "Vz Script • " .. os.date("%Y-%m-%d %H:%M:%S") }
+                    }}
+                })
+            })
+        end
+    end)
+
+    -- Jika Boss ditemukan, hentikan proses (batalkan hop server)
+    if bossFound then
+        return
+    end
+
+    -- === BAGIAN 2: LANJUTKAN PROSES HOP SERVER JIKA TIDAK ADA BOSS ===
+    -- Mencoba eksekusi skrip eksternal (Highest Player)
+    local success, module = pcall(function()
+        return loadstring(game:HttpGet("https://raw.githubusercontent.com/doushengg/PRIVATE/refs/heads/main/HightPlayer"))()
+    end)
+
+    if success and module and type(module) == "table" and module.Teleport then
+        module:Teleport(game.PlaceId, "Highest")
+    else
+        -- Fallback: Cari server publik acak yang berbeda dari JobId saat ini
+        local servers = {}
+        pcall(function()
+            local res = game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100")
+            local data = HttpService:JSONDecode(res)
+            if data and data.data then
+                for _, server in ipairs(data.data) do
+                    if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                        table.insert(servers, server.id)
+                    end
+                end
+            end
+        end)
+
+        if #servers > 0 then
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], lp)
+        else
+            TeleportService:Teleport(game.PlaceId, lp)
+        end
+    end
+end)
