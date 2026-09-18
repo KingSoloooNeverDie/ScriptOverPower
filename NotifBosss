@@ -6,8 +6,7 @@ local lp = Players.LocalPlayer
 task.spawn(function()
     task.wait(5) -- Menunggu 5 detik di server
     
-    -- === BAGIAN 1: CEK BOSS & KIRIM WEBHOOK SEBELUM HOP ===
-    local bossFound = false
+    -- === BAGIAN 1: CEK BOSS & KIRIM WEBHOOK (TETAP LANJUT HOP) ===
     pcall(function()
         local function getBossDetails()
             local bossArena = workspace:FindFirstChild("Events") and workspace.Events:FindFirstChild("BossArena")
@@ -61,8 +60,6 @@ task.spawn(function()
         local bossNameFormatted, bossHealth, bossId = getBossDetails()
 
         if bossNameFormatted then
-            bossFound = true -- Menandakan boss ditemukan
-
             local finalThumbnailUrl = ""
             if bossId ~= "" then
                 local success, result = pcall(function()
@@ -117,12 +114,7 @@ task.spawn(function()
         end
     end)
 
-    -- Jika Boss ditemukan, hentikan proses (batalkan hop server)
-    if bossFound then
-        return
-    end
-
-    -- === BAGIAN 2: LANJUTKAN PROSES HOP SERVER JIKA TIDAK ADA BOSS ===
+    -- === BAGIAN 2: LANGSUNG LANJUT HOP SERVER (RAMAI) ===
     -- Mencoba eksekusi skrip eksternal (Highest Player)
     local success, module = pcall(function()
         return loadstring(game:HttpGet("https://raw.githubusercontent.com/doushengg/PRIVATE/refs/heads/main/HightPlayer"))()
@@ -131,10 +123,10 @@ task.spawn(function()
     if success and module and type(module) == "table" and module.Teleport then
         module:Teleport(game.PlaceId, "Highest")
     else
-        -- Fallback: Cari server publik acak yang berbeda dari JobId saat ini
+        -- Fallback: Cari server publik dengan pemain terbanyak (Desc)
         local servers = {}
         pcall(function()
-            local res = game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100")
+            local res = game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100")
             local data = HttpService:JSONDecode(res)
             if data and data.data then
                 for _, server in ipairs(data.data) do
