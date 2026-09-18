@@ -12,103 +12,16 @@ local SEARCH_KEYWORDS = {"boss1", "boss2", "boss3", "boss4", "boss5", "bossrainb
 
 -- DAFTAR 20 CFRAME POSISI WAIT
 local WAIT_POSITIONS = {
-    CFrame.new(-46.43, 53.68, -1004.79, 1.00, -0.00, 0.10, 0.00, 1.00, -0.00, -0.10, 0.00, 1.00),
-    CFrame.new(43.29, 53.68, -1000.73, 0.99, 0.00, 0.10, -0.00, 1.00, -0.00, -0.10, 0.00, 0.99),
-    CFrame.new(-191.31, 59.13, -1073.14, 0.75, -0.00, -0.66, 0.00, 1.00, -0.00, 0.66, -0.00, 0.75),
-    CFrame.new(-231.90, 78.85, -1124.21, 0.53, 0.00, -0.85, 0.00, 1.00, 0.00, 0.85, -0.00, 0.53),
-    CFrame.new(-275.95, 78.68, -1264.60, 0.06, -0.00, -1.00, -0.00, 1.00, -0.00, 1.00, 0.00, 0.06),
-    CFrame.new(-269.30, 59.13, -1332.82, -0.24, 0.00, -0.97, 0.00, 1.00, 0.00, 0.97, -0.00, -0.24),
-    CFrame.new(-244.94, 78.80, -1396.07, -0.45, -0.00, -0.89, -0.00, 1.00, -0.00, 0.89, -0.00, -0.45),
-    CFrame.new(-204.41, 59.13, -1456.39, -0.70, -0.00, -0.72, -0.00, 1.00, -0.00, 0.72, -0.00, -0.70),
-    CFrame.new(-150.22, 78.83, -1501.23, -0.83, -0.00, -0.56, -0.00, 1.00, 0.00, 0.56, 0.00, -0.83),
-    CFrame.new(-82.61, 59.13, -1532.40, -0.97, -0.00, -0.26, -0.00, 1.00, -0.00, 0.26, -0.00, -0.97),
-    CFrame.new(75.24, 59.13, -1532.98, -0.96, 0.00, 0.27, 0.00, 1.00, -0.00, -0.27, -0.00, -0.96),
-    CFrame.new(146.28, 78.78, -1501.64, -0.95, -0.00, 0.30, -0.00, 1.00, 0.00, -0.30, 0.00, -0.95),
-    CFrame.new(202.19, 59.13, -1452.75, -0.68, 0.00, 0.73, 0.00, 1.00, 0.00, -0.73, 0.00, -0.68),
-    CFrame.new(241.44, 78.81, -1395.97, -0.49, 0.00, 0.87, 0.00, 1.00, -0.00, -0.87, -0.00, -0.49),
-    CFrame.new(266.11, 59.13, -1333.99, -0.26, -0.00, 0.97, 0.00, 1.00, 0.00, -0.97, 0.00, -0.26),
-    CFrame.new(271.44, 78.85, -1264.41, -0.22, 0.00, 0.98, 0.00, 1.00, 0.00, -0.98, 0.00, -0.22),
-    CFrame.new(230.18, 78.42, -1124.05, 0.50, -0.00, 0.86, 0.00, 1.00, 0.00, -0.86, -0.00, 0.50),
-    CFrame.new(184.71, 59.13, -1071.45, 0.69, -0.00, 0.72, 0.00, 1.00, 0.00, -0.72, 0.00, 0.69),
-    CFrame.new(126.80, 78.43, -1032.65, 0.87, -0.00, 0.49, -0.00, 1.00, 0.00, -0.49, -0.00, 0.87),
-    CFrame.new(-130.80, 78.60, -1032.47, 0.88, 0.00, -0.48, -0.00, 1.00, 0.00, 0.48, -0.00, 0.88)
+    CFrame.new(-1.82, 36.15, -1039.66, 1.00, -0.00, 0.06, 0.00, 1.00, 0.00, -0.06, -0.00, 1.00)
 }
 
--- Variabel penyimpan posisi yang telah terkunci
 local savedWaitCFrame = nil
 
 local isRunning = true
 local currentStage = 1
 local wasFlying = false
 
-local function getCharacterParts()
-    local char = player.Character
-    if not char then return nil, nil, nil end
-    return char, char:FindFirstChild("HumanoidRootPart"), char:FindFirstChild("Humanoid")
-end
-
--- Fungsi Pengecekan Pemain Lain dalam Radius 2 Studs selama 2 Detik
-local function isSpotClear(targetCFrame)
-    local targetPos = targetCFrame.Position
-    local checkDuration = 2
-    local checkInterval = 0.1
-    local elapsedTime = 0
-
-    while elapsedTime < checkDuration do
-        if not isRunning then return false end
-        
-        local foundOtherPlayer = false
-        for _, otherPlayer in ipairs(Players:GetPlayers()) do
-            if otherPlayer ~= player and otherPlayer.Character then
-                local otherHrp = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if otherHrp then
-                    local distance = (otherHrp.Position - targetPos).Magnitude
-                    if distance <= 2 then
-                        foundOtherPlayer = true
-                        break
-                    end
-                end
-            end
-        end
-
-        if foundOtherPlayer then
-            return false
-        end
-
-        task.wait(checkInterval)
-        elapsedTime = elapsedTime + checkInterval
-    end
-
-    return true
-end
-
--- Fungsi Pencari & Pengunci Posisi Tunggu
-local function getOrFindWaitCFrame()
-    if savedWaitCFrame then
-        return savedWaitCFrame
-    end
-
-    for index, targetCFrame in ipairs(WAIT_POSITIONS) do
-        if not isRunning then break end
-        
-        local _, hrp, _ = getCharacterParts()
-        if hrp then
-            hrp.CFrame = targetCFrame
-            if bossFlyBG then
-                bossFlyBG.CFrame = targetCFrame
-            end
-        end
-
-        if isSpotClear(targetCFrame) then
-            savedWaitCFrame = targetCFrame
-            return savedWaitCFrame
-        end
-    end
-
-    savedWaitCFrame = WAIT_POSITIONS[1]
-    return savedWaitCFrame
-end
-
+-- Fungsi Unequip Semua Tool
 local function unequipAllTools()
     local character = player.Character
     if not character then return end
@@ -125,52 +38,47 @@ local function unequipAllTools()
     end
 end
 
--- Fast Punch Thread Management
-local fastPunchThread1 = nil
-local fastPunchThread2 = nil
-
 _G.ToggleFastPunch = function(bool)
     _G.FastPunch = bool
     if bool then
-        if not fastPunchThread1 then
-            fastPunchThread1 = task.spawn(function()
-                while _G.FastPunch do
-                    local character = player.Character
-                    if character then
-                        local punch = character:FindFirstChild("Punch") or player.Backpack:FindFirstChild("Punch")
-                        if punch then
-                            if punch:FindFirstChild("attackTime") then punch.attackTime.Value = 0 end
-                            if punch.Parent ~= character and character:FindFirstChild("Humanoid") then
-                                character.Humanoid:EquipTool(punch)
-                            end
-                            punch:Activate()
+        task.spawn(function()
+            while _G.FastPunch do
+                local character = player.Character
+                if character then
+                    local punch = character:FindFirstChild("Punch") or player.Backpack:FindFirstChild("Punch")
+                    if punch then
+                        if punch:FindFirstChild("attackTime") then punch.attackTime.Value = 0 end
+                        if punch.Parent ~= character and character:FindFirstChild("Humanoid") then
+                            character.Humanoid:EquipTool(punch)
                         end
+                        punch:Activate()
                     end
-                    task.wait()
                 end
-                fastPunchThread1 = nil
-            end)
-        end
-        
-        if not fastPunchThread2 then
-            fastPunchThread2 = task.spawn(function()
-                while _G.FastPunch do
-                    local muscleEvent = player:FindFirstChild("muscleEvent") or ReplicatedStorage:FindFirstChild("muscleEvent")
-                    if muscleEvent then
-                        muscleEvent:FireServer("punch", "rightHand")
-                        muscleEvent:FireServer("punch", "leftHand")
-                    end
-                    task.wait()
+                task.wait()
+            end
+        end)
+        task.spawn(function()
+            while _G.FastPunch do
+                local muscleEvent = player:FindFirstChild("muscleEvent") or ReplicatedStorage:FindFirstChild("muscleEvent")
+                if muscleEvent then
+                    muscleEvent:FireServer("punch", "rightHand")
+                    muscleEvent:FireServer("punch", "leftHand")
                 end
-                fastPunchThread2 = nil
-            end)
-        end
+                task.wait()
+            end
+        end)
     else
         local punch = player.Character and (player.Character:FindFirstChild("Punch") or player.Backpack:FindFirstChild("Punch"))
         if punch and punch:FindFirstChild("attackTime") then 
             punch.attackTime.Value = 0.35 
         end
     end
+end
+
+local function getCharacterParts()
+    local char = player.Character
+    if not char then return nil, nil, nil end
+    return char, char:FindFirstChild("HumanoidRootPart"), char:FindFirstChild("Humanoid")
 end
 
 local bossFlyBV = nil
@@ -233,7 +141,66 @@ local function setBossFlying(enabled, hrp, hum)
     end
 end
 
--- UI Toggle
+-- ====================================================================
+-- STAGE 1: TELEPORT FISIK & CEK 6 STUDS BERURUTAN (POLOS TANPA USERID)
+-- ====================================================================
+local CHECK_RADIUS = 6
+
+local function isCurrentPositionClear()
+    local myHrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not myHrp then return false end
+
+    for _, otherPlayer in ipairs(Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHrp = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if otherHrp then
+                local distance = (otherHrp.Position - myHrp.Position).Magnitude
+                if distance <= CHECK_RADIUS then
+                    return false -- Ada player dalam radius 6 studs
+                end
+            end
+        end
+    end
+
+    return true -- Area bersih
+end
+
+local function getOrFindWaitCFrame()
+    local character = player.Character or player.CharacterAdded:Wait()
+    local hrp = character:WaitForChild("HumanoidRootPart")
+
+    -- 1. Cek posisi yang sudah terkunci dari putaran sebelumnya
+    if savedWaitCFrame then
+        hrp.CFrame = savedWaitCFrame
+        if bossFlyBG then bossFlyBG.CFrame = savedWaitCFrame end
+
+        if isCurrentPositionClear() then
+            return savedWaitCFrame
+        else
+            savedWaitCFrame = nil -- Jika sudah ditempati orang lain, lepas kunci
+        end
+    end
+
+    -- 2. Cek berurutan dari Spot 1 sampai Spot 20 secara langsung
+    for _, candidateCFrame in ipairs(WAIT_POSITIONS) do
+        hrp.CFrame = candidateCFrame
+        if bossFlyBG then bossFlyBG.CFrame = candidateCFrame end
+
+        if isCurrentPositionClear() then
+            savedWaitCFrame = candidateCFrame
+            return savedWaitCFrame -- KOSONG -> LANGSUNG LOCK & SELESAI!
+        end
+        -- TERISI -> LANGSUNG CONTINUED/GANTI KE SPOT BERIKUTNYA
+    end
+
+    -- Jika seluruh 20 spot terisi penuh, pakai spot nomor 1 sebagai default
+    savedWaitCFrame = WAIT_POSITIONS[1]
+    hrp.CFrame = savedWaitCFrame
+    if bossFlyBG then bossFlyBG.CFrame = savedWaitCFrame end
+    return savedWaitCFrame
+end
+
+-- Membuat UI Toggle
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BossFarmGui"
 pcall(function() screenGui.Parent = CoreGui end)
@@ -287,7 +254,7 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- Tombol Toggle On/Off
+-- Fungsi Klik Toggle On/Off
 toggleButton.MouseButton1Click:Connect(function()
     isRunning = not isRunning
     if isRunning then
@@ -352,27 +319,21 @@ task.spawn(function()
         currentStage = 1
         if _G.ToggleFastPunch then _G.ToggleFastPunch(false) end
         
-        -- 1. Aktifkan terbang & emote duluan sebelum teleport
+        -- 1. Aktifkan terbang & emote duluan di lokasi asal
         setBossFlying(true, hrp, hum)
         playBossEmote(hum, emoteIdleName)
         
-        -- 2. Wait 3 detik di tempat asal
         task.wait(3)
         if not isRunning then continue end
-        
-        -- SISTEM 20 POSISI: Cari atau gunakan posisi CFrame yang tersimpan
+
+        -- 2. Teleport & Cari Spot Kosong Instan (Stage 1)
         local selectedWaitCFrame = getOrFindWaitCFrame()
-        
-        hrp.CFrame = selectedWaitCFrame
-        if bossFlyBG then
-            bossFlyBG.CFrame = selectedWaitCFrame
-        end
-        
+
         local activeBossModel = nil
-        
-        -- Menunggu Boss Spawn
+
+        -- 3. Pencarian Boss MURNI KODE PERTAMA (Workspace:GetDescendants)
         while isRunning do
-            for _, obj in ipairs(Workspace:GetChildren()) do
+            for _, obj in ipairs(Workspace:GetDescendants()) do
                 if not isRunning then break end
                 if obj:IsA("Model") and Players:GetPlayerFromCharacter(obj) == nil then
                     local objNameLower = string.lower(obj.Name)
@@ -404,8 +365,10 @@ task.spawn(function()
 
         if not isRunning then continue end
 
+        -- STAGE 2 (MURNI KODE PERTAMA)
         currentStage = 2
         
+        setBossFlying(true, hrp, hum)
         playBossEmote(hum, emoteIdleName)
         
         task.wait(2)
@@ -444,7 +407,7 @@ task.spawn(function()
                 local dir = (destPos - hrp.Position)
                 
                 if dir.Magnitude > 3 then
-                    bossFlyBV.Velocity = dir.Unit * 700
+                    bossFlyBV.Velocity = dir.Unit * 180
                 else
                     bossFlyBV.Velocity = Vector3.zero
                 end
@@ -472,10 +435,11 @@ task.spawn(function()
             task.wait(0.1)
         end
 
+        -- KETIKA BOS MATI (MURNI KODE PERTAMA)
         if _G.ToggleFastPunch then
             _G.ToggleFastPunch(false)
         end
-
+        
         unequipAllTools()
 
         setBossFlying(false, hrp, hum)
@@ -483,6 +447,7 @@ task.spawn(function()
 
         if not isRunning then continue end
 
+        -- STAGE 3 (MURNI KODE PERTAMA)
         currentStage = 3
         local chestFound = false
         local SEARCH_KEYWORD_CHEST = "chest_base"
@@ -508,6 +473,7 @@ task.spawn(function()
 
         task.wait(0.5)
 
+        -- STAGE 4 (MURNI KODE PERTAMA)
         currentStage = 4
         task.wait(5)
     end
