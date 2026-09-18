@@ -4,7 +4,6 @@ local Players = game:GetService("Players")
 local lp = Players.LocalPlayer
 
 task.spawn(function()
-    task.wait(5) -- Menunggu 5 detik di server
     
     -- === BAGIAN 1: CEK BOSS & KIRIM WEBHOOK (TETAP LANJUT HOP) ===
     pcall(function()
@@ -113,6 +112,8 @@ task.spawn(function()
             })
         end
     end)
+
+    task.wait(10)
 
     -- === BAGIAN 2: LANGSUNG LANJUT HOP SERVER (RAMAI) ===
     -- Mencoba eksekusi skrip eksternal (Highest Player)
