@@ -63,7 +63,7 @@ local function startAutoRep(flagName, toolName)
     end)
 end
 
-local ModernV2 = loadstring(game:HttpGet("https://raw.githubusercontent.com/AbadiiSelalu/PerfectUi/refs/heads/main/Ui%20Library.lua"))()
+local ModernV2 = loadstring(game:HttpGet("https://raw.githubusercontent.com/KingSoloooNeverDie/ScriptOverPower/refs/heads/main/Ui%20Library.lua"))()
 
 ModernV2:AddTheme({
     Name = "Putih Hitam",
