@@ -482,7 +482,7 @@ task.spawn(function()
                 end
                 
                 if targetPos then
-                    local offsetPos = targetPos + Vector3.new(-15, 10, 0)
+                    local offsetPos = targetPos + Vector3.new(-15, 15, 0)
                     hrp.CFrame = CFrame.lookAt(offsetPos, targetPos)
                     chestFound = true
                     break
