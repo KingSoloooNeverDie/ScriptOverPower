@@ -1,0 +1,42 @@
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local camera = workspace.CurrentCamera
+
+local camPosition = Vector3.new(-37052.28, 1401.56, -8025.13) 
+
+local cameraYaw = 0   
+local cameraPitch = 0 
+
+camera.CameraType = Enum.CameraType.Scriptable
+
+local isDragging = false
+local lastMousePos = Vector2.new(0, 0)
+
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        isDragging = true
+        lastMousePos = input.Position
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        isDragging = false
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if isDragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+        local delta = input.Position - lastMousePos
+        lastMousePos = input.Position
+        
+        cameraYaw = cameraYaw - delta.X * 0.005
+        cameraPitch = math.clamp(cameraPitch - delta.Y * 0.005, -math.pi/2 + 0.01, math.pi/2 - 0.01)
+    end
+end)
+
+local freecamConnection
+freecamConnection = RunService.RenderStepped:Connect(function()
+    local rotationCFrame = CFrame.new(camPosition) * CFrame.Angles(0, cameraYaw, 0) * CFrame.Angles(cameraPitch, 0, 0)
+    camera.CFrame = rotationCFrame
+end)
