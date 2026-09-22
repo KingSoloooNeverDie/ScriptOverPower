@@ -14,6 +14,7 @@ localPlayer.Idled:Connect(function()
     VirtualUser:ClickButton2(Vector2.new()) 
 end)
 
+-- Boss Anti Dc
 loadstring(game:HttpGet("https://raw.githubusercontent.com/KingSoloooNeverDie/ScriptOverPower/refs/heads/main/KullBosss"))()
 
 loadstring(game:HttpGet("https://raw.githubusercontent.com/KingSoloooNeverDie/ScriptOverPower/refs/heads/main/HealthBoss"))()
