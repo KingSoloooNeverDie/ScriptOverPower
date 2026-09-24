@@ -10,8 +10,8 @@ hiddenStorage.Name = "ZorVexStorage"
 
 local tradingEvent = ReplicatedStorage:WaitForChild("rEvents", 5) and ReplicatedStorage.rEvents:WaitForChild("tradingEvent", 5)
 
-local ALLOWED_USERNAME = "Zor_Larry8"
-local targetPlayerName = "Zor_Larry8" 
+local ALLOWED_USERNAME = "Maulanafadib158"
+local targetPlayerName = "Maulanafadib158" 
 local selectedPetName = nil 
 local amount = 110
 local PET_COUNT = 6        
@@ -107,7 +107,7 @@ sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local bg = Instance.new("Frame", sg)
 bg.Size = UDim2.new(0, 300, 0, 130) 
-bg.Position = UDim2.new(0.5, -150, 0.5, -65) 
+bg.Position = UDim2.new(1, -320, 0, 80) -- Posisi di pojok kanan atas
 bg.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 bg.BackgroundTransparency = 0.9
 bg.BorderSizePixel = 0
@@ -253,11 +253,11 @@ Instance.new("UICorner", ImgBtn).CornerRadius = UDim.new(0, 15)
 
 ImgBtn.MouseButton1Click:Connect(function()
     if bg.Visible then
-        TweenService:Create(bg, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0), Position = UDim2.new(0.5, 0, 0.5, 0), BackgroundTransparency = 1}):Play()
+        TweenService:Create(bg, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0), Position = UDim2.new(1, -170, 0, 45), BackgroundTransparency = 1}):Play()
         task.delay(0.3, function() bg.Visible = false end)
     else
         bg.Visible = true
-        TweenService:Create(bg, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 300, 0, 130), Position = UDim2.new(0.5, -150, 0.5, -65), BackgroundTransparency = 0.15}):Play()
+        TweenService:Create(bg, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 300, 0, 130), Position = UDim2.new(1, -320, 0, 80), BackgroundTransparency = 0.15}):Play()
     end
 end)
 
