@@ -14,23 +14,26 @@ local cameraPitch = 0
 local isDragging = false
 local lastMousePos = Vector2.new(0, 0)
 local freecamConnection = nil
+local isCameraActive = false
+
+-- Deklarasi fungsi lebih awal agar bisa dipanggil di tombol
+local setStaticCamera, resetCameraToNormal
 
 -- ==========================================
 -- 1. FUNGSI UNTUK MENYALAKAN / MEMINDAHKAN KAMERA
 -- ==========================================
-local function setStaticCamera(newPosition)
+setStaticCamera = function(newPosition)
     if newPosition then
-        currentCamPos = newPosition -- Bisa diisi koordinat baru untuk memindahkan kamera
+        currentCamPos = newPosition
     end
     
+    isCameraActive = true
     camera.CameraType = Enum.CameraType.Scriptable
     
-    -- Putus koneksi lama jika ada supaya tidak numpuk
     if freecamConnection then
         freecamConnection:Disconnect()
     end
     
-    -- Mulai kunci & putar kamera di koordinat tujuan
     freecamConnection = RunService.RenderStepped:Connect(function()
         local rotationCFrame = CFrame.new(currentCamPos) * CFrame.Angles(0, cameraYaw, 0) * CFrame.Angles(cameraPitch, 0, 0)
         camera.CFrame = rotationCFrame
@@ -38,16 +41,16 @@ local function setStaticCamera(newPosition)
 end
 
 -- ==========================================
--- 2. FUNGSI UNTUK MENGEMBALIKAN KE NORMAL
+-- 2. FUNGSI UNTUK MENGEMBALIKAN KE NORMAL (OFF)
 -- ==========================================
-local function resetCameraToNormal()
-    -- Matikan loop renderstepped (Kunci utama agar lepas)
+resetCameraToNormal = function()
+    isCameraActive = false
+    
     if freecamConnection then
         freecamConnection:Disconnect()
         freecamConnection = nil
     end
     
-    -- Kembalikan fokus ke karakter
     local character = player.Character or player.CharacterAdded:Wait()
     local humanoid = character:WaitForChild("Humanoid", 3)
     
@@ -55,7 +58,6 @@ local function resetCameraToNormal()
         camera.CameraSubject = humanoid
     end
     
-    -- Ubah tipe kamera kembali ke normal (Custom)
     camera.CameraType = Enum.CameraType.Custom
 end
 
@@ -63,7 +65,7 @@ end
 -- 3. KONTROL GESER LAYAR / MOUSE (ROTASI)
 -- ==========================================
 UserInputService.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if isCameraActive and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1) then
         isDragging = true
         lastMousePos = input.Position
     end
@@ -76,7 +78,7 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if isDragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+    if isCameraActive and isDragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.MouseMovement) then
         local delta = input.Position - lastMousePos
         lastMousePos = input.Position
         
@@ -86,43 +88,51 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 -- ==========================================
--- 4. MEMBUAT TOMBOL MENU DI LAYAR (GUI)
+-- 4. MEMBUAT UI TOMBOL ON/OFF DI SEBELAH KANAN ATAS
 -- ==========================================
+for _, gui in ipairs(CoreGui:GetChildren()) do
+    if gui.Name == "ToggleCameraControlGui" then
+        gui:Destroy()
+    end
+end
+for _, gui in ipairs(player.PlayerGui:GetChildren()) do
+    if gui.Name == "ToggleCameraControlGui" then
+        gui:Destroy()
+    end
+end
+
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "CameraControlGui"
+screenGui.Name = "ToggleCameraControlGui"
 pcall(function() screenGui.Parent = CoreGui end)
 if not screenGui.Parent then
     screenGui.Parent = player:WaitForChild("PlayerGui")
 end
 
--- Tombol Nyalakan Kamera Statis
-local btnStatic = Instance.new("TextButton")
-btnStatic.Size = UDim2.new(0, 160, 0, 40)
-btnStatic.Position = UDim2.new(0, 50, 0, 50)
-btnStatic.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-btnStatic.TextColor3 = Color3.fromRGB(255, 255, 255)
-btnStatic.TextSize = 14
-btnStatic.Font = Enum.Font.SourceSansBold
-btnStatic.Text = "Aktifkan Kamera"
-btnStatic.Parent = screenGui
-Instance.new("UICorner", btnStatic).CornerRadius = UDim.new(0, 6)
+local btnToggle = Instance.new("TextButton")
+btnToggle.Size = UDim2.new(0, 160, 0, 40)
+btnToggle.Position = UDim2.new(1, -170, 0, 50)
+btnToggle.BackgroundColor3 = Color3.fromRGB(0, 200, 100) -- Warna Hijau (Awalnya ON)
+btnToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnToggle.TextSize = 14
+btnToggle.Font = Enum.Font.SourceSansBold
+btnToggle.Text = "Kamera: ON"
+btnToggle.Parent = screenGui
+Instance.new("UICorner", btnToggle).CornerRadius = UDim.new(0, 6)
 
-btnStatic.MouseButton1Click:Connect(function()
-    setStaticCamera() -- Menyalakan kamera di posisi currentCamPos
+-- Logika Tombol On/Off saat diklik
+btnToggle.MouseButton1Click:Connect(function()
+    if isCameraActive then
+        resetCameraToNormal()
+        btnToggle.Text = "Kamera: OFF"
+        btnToggle.BackgroundColor3 = Color3.fromRGB(150, 50, 50) -- Warna Merah
+    else
+        setStaticCamera()
+        btnToggle.Text = "Kamera: ON"
+        btnToggle.BackgroundColor3 = Color3.fromRGB(0, 200, 100) -- Warna Hijau
+    end
 end)
 
--- Tombol Reset / Kembali Normal
-local btnReset = Instance.new("TextButton")
-btnReset.Size = UDim2.new(0, 160, 0, 40)
-btnReset.Position = UDim2.new(0, 50, 0, 100)
-btnReset.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
-btnReset.TextColor3 = Color3.fromRGB(255, 255, 255)
-btnReset.TextSize = 14
-btnReset.Font = Enum.Font.SourceSansBold
-btnReset.Text = "Reset Kamera (Normal)"
-btnReset.Parent = screenGui
-Instance.new("UICorner", btnReset).CornerRadius = UDim.new(0, 6)
-
-btnReset.MouseButton1Click:Connect(function()
-    resetCameraToNormal() -- Mengembalikan kamera seperti semula
-end)
+-- ==========================================
+-- 5. AUTO AKTIF SAAT PERTAMA KALI DIJALANKAN
+-- ==========================================
+setStaticCamera()
