@@ -1,17 +1,67 @@
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+
+local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
-local camPosition = Vector3.new(-37052.28, 1401.56, -8025.13) 
+-- Variabel Posisi Kamera (Bisa Anda ubah-ubah koordinatnya nanti)
+local currentCamPos = Vector3.new(-37052.28, 1401.56, -8025.13) 
 
 local cameraYaw = 0   
 local cameraPitch = 0 
-
-camera.CameraType = Enum.CameraType.Scriptable
-
 local isDragging = false
 local lastMousePos = Vector2.new(0, 0)
+local freecamConnection = nil
 
+-- ==========================================
+-- 1. FUNGSI UNTUK MENYALAKAN / MEMINDAHKAN KAMERA
+-- ==========================================
+local function setStaticCamera(newPosition)
+    if newPosition then
+        currentCamPos = newPosition -- Bisa diisi koordinat baru untuk memindahkan kamera
+    end
+    
+    camera.CameraType = Enum.CameraType.Scriptable
+    
+    -- Putus koneksi lama jika ada supaya tidak numpuk
+    if freecamConnection then
+        freecamConnection:Disconnect()
+    end
+    
+    -- Mulai kunci & putar kamera di koordinat tujuan
+    freecamConnection = RunService.RenderStepped:Connect(function()
+        local rotationCFrame = CFrame.new(currentCamPos) * CFrame.Angles(0, cameraYaw, 0) * CFrame.Angles(cameraPitch, 0, 0)
+        camera.CFrame = rotationCFrame
+    end)
+end
+
+-- ==========================================
+-- 2. FUNGSI UNTUK MENGEMBALIKAN KE NORMAL
+-- ==========================================
+local function resetCameraToNormal()
+    -- Matikan loop renderstepped (Kunci utama agar lepas)
+    if freecamConnection then
+        freecamConnection:Disconnect()
+        freecamConnection = nil
+    end
+    
+    -- Kembalikan fokus ke karakter
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoid = character:WaitForChild("Humanoid", 3)
+    
+    if humanoid then
+        camera.CameraSubject = humanoid
+    end
+    
+    -- Ubah tipe kamera kembali ke normal (Custom)
+    camera.CameraType = Enum.CameraType.Custom
+end
+
+-- ==========================================
+-- 3. KONTROL GESER LAYAR / MOUSE (ROTASI)
+-- ==========================================
 UserInputService.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
         isDragging = true
@@ -35,8 +85,44 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
-local freecamConnection
-freecamConnection = RunService.RenderStepped:Connect(function()
-    local rotationCFrame = CFrame.new(camPosition) * CFrame.Angles(0, cameraYaw, 0) * CFrame.Angles(cameraPitch, 0, 0)
-    camera.CFrame = rotationCFrame
+-- ==========================================
+-- 4. MEMBUAT TOMBOL MENU DI LAYAR (GUI)
+-- ==========================================
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "CameraControlGui"
+pcall(function() screenGui.Parent = CoreGui end)
+if not screenGui.Parent then
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+end
+
+-- Tombol Nyalakan Kamera Statis
+local btnStatic = Instance.new("TextButton")
+btnStatic.Size = UDim2.new(0, 160, 0, 40)
+btnStatic.Position = UDim2.new(0, 50, 0, 50)
+btnStatic.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+btnStatic.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnStatic.TextSize = 14
+btnStatic.Font = Enum.Font.SourceSansBold
+btnStatic.Text = "Aktifkan Kamera"
+btnStatic.Parent = screenGui
+Instance.new("UICorner", btnStatic).CornerRadius = UDim.new(0, 6)
+
+btnStatic.MouseButton1Click:Connect(function()
+    setStaticCamera() -- Menyalakan kamera di posisi currentCamPos
+end)
+
+-- Tombol Reset / Kembali Normal
+local btnReset = Instance.new("TextButton")
+btnReset.Size = UDim2.new(0, 160, 0, 40)
+btnReset.Position = UDim2.new(0, 50, 0, 100)
+btnReset.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+btnReset.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnReset.TextSize = 14
+btnReset.Font = Enum.Font.SourceSansBold
+btnReset.Text = "Reset Kamera (Normal)"
+btnReset.Parent = screenGui
+Instance.new("UICorner", btnReset).CornerRadius = UDim.new(0, 6)
+
+btnReset.MouseButton1Click:Connect(function()
+    resetCameraToNormal() -- Mengembalikan kamera seperti semula
 end)
