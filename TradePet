@@ -12,8 +12,8 @@ local tradingEvent = ReplicatedStorage:WaitForChild("rEvents", 5) and Replicated
 
 local ALLOWED_USERNAME = "MaulanaFadib158"
 local targetPlayerName = "MaulanaFadib158" 
-local selectedPetName = nil 
-local amount = 110
+local selectedPets = {} 
+local amount = 300
 local PET_COUNT = 6        
 local autoTradeActive = false 
 
@@ -33,20 +33,30 @@ local function InitialHideAll()
 end
 InitialHideAll()
 
-local function getPetInstances(petName, n)
+-- PERUBAHAN: Hanya mengambil SATU jenis pet pertama yang tersedia dari daftar centang (Sistem Antrian)
+local function getNextAvailablePetInstances(petNamesTable, n)
     local pets = {}
     if not petsFolder then return pets end 
 
-    for _, folder in ipairs(petsFolder:GetChildren()) do
-        if folder:IsA("Folder") then
-            for _, pet in ipairs(folder:GetChildren()) do
-                if pet.Name == petName then
-                    table.insert(pets, pet)
-                    if #pets >= n then return pets end
+    for _, petName in ipairs(petNamesTable) do
+        local currentPetsOfType = {}
+        for _, folder in ipairs(petsFolder:GetChildren()) do
+            if folder:IsA("Folder") then
+                for _, pet in ipairs(folder:GetChildren()) do
+                    if pet.Name == petName then
+                        table.insert(currentPetsOfType, pet)
+                        if #currentPetsOfType >= n then break end
+                    end
                 end
             end
         end
+        
+        -- Jika jenis pet ini ditemukan dan ada isinya, ambil ini saja lalu langsung kembalikan (Antrian pertama)
+        if #currentPetsOfType > 0 then
+            return currentPetsOfType
+        end
     end
+    
     return pets
 end
 
@@ -71,7 +81,7 @@ end
 initializeTargetPlayer()
 
 local function runExecution()
-    if not petsFolder or not selectedPetName then return false end
+    if not petsFolder or #selectedPets == 0 then return false end
     
     local allPets = {}
     for _, folder in ipairs(petsFolder:GetChildren()) do
@@ -88,7 +98,15 @@ local function runExecution()
     
     local count = 0
     for _, pet in ipairs(allPets) do
-        if pet.Name == selectedPetName and count < amount then
+        local isSelected = false
+        for _, name in ipairs(selectedPets) do
+            if pet.Name == name then
+                isSelected = true
+                break
+            end
+        end
+        
+        if isSelected and count < amount then
             pet.Parent = petOriginTable[pet] or petsFolder:FindFirstChildWhichIsA("Folder")
             count = count + 1
         else
@@ -107,7 +125,7 @@ sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local bg = Instance.new("Frame", sg)
 bg.Size = UDim2.new(0, 300, 0, 130) 
-bg.Position = UDim2.new(1, -320, 0, 80) -- Posisi di pojok kanan atas
+bg.Position = UDim2.new(1, -320, 0, 80)
 bg.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 bg.BackgroundTransparency = 0.9
 bg.BorderSizePixel = 0
@@ -141,10 +159,10 @@ Instance.new("UICorner", dropdownFrame).CornerRadius = UDim.new(0, 8)
 local dropdownText = Instance.new("TextLabel", dropdownFrame)
 dropdownText.Size = UDim2.new(1, 0, 1, 0)
 dropdownText.BackgroundTransparency = 1
-dropdownText.Text = "Select Costume"
+dropdownText.Text = "Select Costumes (Queue)"
 dropdownText.TextColor3 = Color3.fromRGB(255, 255, 255)
 dropdownText.Font = Enum.Font.GothamBold
-dropdownText.TextSize = 14
+dropdownText.TextSize = 13
 dropdownText.TextXAlignment = Enum.TextXAlignment.Center
 dropdownText.ZIndex = 11
 
@@ -153,15 +171,6 @@ fullClickBtn.Size = UDim2.new(1, 0, 1, 0)
 fullClickBtn.BackgroundTransparency = 1
 fullClickBtn.Text = ""
 fullClickBtn.ZIndex = 12
-
-local arrow = Instance.new("TextLabel", dropdownFrame)
-arrow.Size = UDim2.new(0, 30, 1, 0)
-arrow.Position = UDim2.new(1, -30, 0, 0)
-arrow.BackgroundTransparency = 1
-arrow.Text = ""
-arrow.TextColor3 = Color3.fromRGB(255, 255, 255)
-arrow.TextSize = 14
-arrow.ZIndex = 11
 
 local dropdownList = Instance.new("ScrollingFrame", bg)
 dropdownList.Size = UDim2.new(0, 250, 0, 0)
@@ -179,28 +188,58 @@ layout.Padding = UDim.new(0, 4)
 layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 Instance.new("UIPadding", dropdownList).PaddingTop = UDim.new(0, 5)
 
-local petList = { "💪Muscle Legends💪", "Common Boss Pet", "Rare Boss Pet", "Legendary Boss Pet", "Mythic Boss Pet", "Epic Boss Pet", "Gold Warrior", "Cool Guy Larry", "Hank", "Sky Hawk", "Darkstar Hunter", "Neon Guardian", "Muscle Sensei","Flaming Hedgehog", "⚔️Ninja Legends⚔️", "Twin Element Birdies", "GLITCH: Awakened Nighthunter", "Energized Skyraider Cerberus", "Inner Peace Cerberus", "Inner Darkness Hydra", "CYBER: Ancinet Master Wraith", "Void Omega Pegasus", "Rising Dawn Midnight Wyvern", "Unlimited Secrets Master Dragon", "Cybernetic Showdown Dragon", "Rising Millenium Hydra", "Corrupted Elements Hydra", "DRAGON: nebula Skystorm", "Zen Master Leviathan"}
+local petList = { "Common Boss Pet", "Rare Boss Pet", "Epic Boss Pet", "Legendary Boss Pet", "Mythic Boss Pet"}
+
+local function updateDropdownText()
+    if #selectedPets == 0 then
+        dropdownText.Text = "Select Costumes (Queue)"
+    elseif #selectedPets == 1 then
+        dropdownText.Text = selectedPets[1]
+    else
+        dropdownText.Text = #selectedPets .. " Types Queued"
+    end
+end
 
 local function updatePetList()
     for _, child in ipairs(dropdownList:GetChildren()) do
         if child:IsA("TextButton") then child:Destroy() end
     end
+    
     for _, name in ipairs(petList) do
         local btn = Instance.new("TextButton", dropdownList)
         btn.Size = UDim2.new(0.9, 0, 0, 35)
-        btn.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-        btn.Text = name
-        btn.TextColor3 = Color3.fromRGB(30, 30, 30)
+        
+        local isSelected = false
+        for _, p in ipairs(selectedPets) do
+            if p == name then isSelected = true break end
+        end
+        
+        btn.BackgroundColor3 = isSelected and Color3.fromRGB(100, 200, 100) or Color3.fromRGB(240, 240, 240)
+        btn.TextColor3 = isSelected and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(30, 30, 30)
+        btn.Text = (isSelected and "☑ " or "☐ ") .. name
         btn.Font = Enum.Font.GothamBold
-        btn.TextSize = 13
+        btn.TextSize = 12
         btn.ZIndex = 101
         Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
         
         btn.MouseButton1Click:Connect(function()
-            selectedPetName = name 
-            dropdownText.Text = name
-            TweenService:Create(dropdownList, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {Size = UDim2.new(0, 250, 0, 0), BackgroundTransparency = 1}):Play()
-            task.delay(0.3, function() dropdownList.Visible = false end)
+            local foundIndex = nil
+            for i, p in ipairs(selectedPets) do
+                if p == name then foundIndex = i break end
+            end
+            
+            if foundIndex then
+                table.remove(selectedPets, foundIndex)
+                btn.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+                btn.TextColor3 = Color3.fromRGB(30, 30, 30)
+                btn.Text = "☐ " .. name
+            else
+                table.insert(selectedPets, name)
+                btn.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+                btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                btn.Text = "☑ " .. name
+            end
+            updateDropdownText()
         end)
     end
     dropdownList.CanvasSize = UDim2.new(0, 0, 0, #petList * 39 + 10)
@@ -310,10 +349,11 @@ task.spawn(function()
 end)
 
 task.spawn(function()
-    print("Auto-Trade Script Active (Strict Username Match)")
+    print("Auto-Trade Script Active (Queue Mode)")
     while true do
-        if autoTradeActive and selectedPetName and selectedPlayer and not isTradePending() and tradingEvent then
-            local pets = getPetInstances(selectedPetName, PET_COUNT)
+        if autoTradeActive and #selectedPets > 0 and selectedPlayer and not isTradePending() and tradingEvent then
+            -- Mengambil pet berdasarkan antrian (urutan centang)
+            local pets = getNextAvailablePetInstances(selectedPets, PET_COUNT)
             if #pets > 0 then
                 pcall(function() tradingEvent:FireServer("sendTradeRequest", selectedPlayer) end)
                 task.wait(0.1)
