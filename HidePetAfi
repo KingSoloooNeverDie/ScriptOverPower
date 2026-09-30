@@ -118,7 +118,7 @@ layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 Instance.new("UIPadding", dropdownList).PaddingTop = UDim.new(0, 6)
 
 local selectedPet = nil
-local petList = { "💪Muscle Legends💪", "Common Boss Pet", "Rare Boss Pet", "Epic Boss Pet", "Legendary Boss Pet", "Mythic Boss Pet", "Gold Warrior", "Cool Guy Larry", "Hank", "Sky Hawk", "Darkstar Hunter", "Neon Guardian", "Muscle Sensei", "⚔️Ninja Legends⚔️", "Twin Element Birdies", "GLITCH: Awakened Nighthunter", "Energized Skyraider Cerberus", "Inner Peace Cerberus", "Inner Darkness Hydra", "CYBER: Ancinet Master Wraith", "Void Omega Pegasus", "Rising Dawn Midnight Wyvern", "Unlimited Secrets Master Dragon", "Cybernetic Showdown Dragon", "Rising Millenium Hydra", "Corrupted Elements Hydra", "DRAGON: nebula Skystorm", "Zen Master Leviathan"}
+local petList = { "💪Muscle Legends💪", "Common Boss Pet", "Rare Boss Pet", "Epic Boss Pet", "Legendary Boss Pet", "Mythic Boss Pet", "Apex Overlord", "Titan Reactor", "Gold Warrior", "Cool Guy Larry", "Hank", "Sky Hawk", "Darkstar Hunter", "Neon Guardian", "Muscle Sensei", "⚔️Ninja Legends⚔️", "Twin Element Birdies", "GLITCH: Awakened Nighthunter", "Energized Skyraider Cerberus", "Inner Peace Cerberus", "Inner Darkness Hydra", "CYBER: Ancinet Master Wraith", "Void Omega Pegasus", "Rising Dawn Midnight Wyvern", "Unlimited Secrets Master Dragon", "Cybernetic Showdown Dragon", "Rising Millenium Hydra", "Corrupted Elements Hydra", "DRAGON: nebula Skystorm", "Zen Master Leviathan"}
 
 local function updatePetList()
     for _, child in ipairs(dropdownList:GetChildren()) do
@@ -243,13 +243,20 @@ end)
 
 local toggleScreenGui = Instance.new("ScreenGui", game.CoreGui)
 toggleScreenGui.Name = "ZorVexToggle"
+
 local ImgBtn = Instance.new("ImageButton", toggleScreenGui)
-ImgBtn.Size = UDim2.new(0, 60, 0, 60)
-ImgBtn.Position = UDim2.new(1, -70, 0, 10)
-ImgBtn.BackgroundTransparency = 1
+ImgBtn.Size = UDim2.new(0, 45, 0, 45)
+ImgBtn.Position = UDim2.new(1, -55, 0, 10)
+ImgBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+ImgBtn.BackgroundTransparency = 0
 ImgBtn.Image = "rbxassetid://91981940230704" 
+ImgBtn.ClipsDescendants = true
 ImgBtn.ZIndex = 9999
-Instance.new("UICorner", ImgBtn).CornerRadius = UDim.new(0, 15)
+
+local imgCorner = Instance.new("UICorner", ImgBtn)
+imgCorner.CornerRadius = UDim.new(0, 10)
+
+addShadowStrokes(ImgBtn)
 
 ImgBtn.MouseButton1Click:Connect(function()
     if bg.Visible then
@@ -261,26 +268,40 @@ ImgBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+-- FUNGSI DRAGGABLE ANTI-KONFLIK TOUCH (BEBAS DARI TELEPORT SAAT PAKAI ANALOG)
 local function makeDraggable(frame, button)
-    local dragging, dragStart, startPos
+    local dragging = false
+    local dragStart, startPos
+    local activeInput = nil
+
     button.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true; dragStart = input.Position; startPos = frame.Position
+        if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and not dragging then
+            dragging = true
+            activeInput = input
+            dragStart = input.Position
+            startPos = frame.Position
         end
     end)
+
     UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        if dragging and input == activeInput then
             local delta = input.Position - dragStart
             frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
     end)
-    button.InputEnded:Connect(function() dragging = false end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input == activeInput then
+            dragging = false
+            activeInput = nil
+        end
+    end)
 end
 
 makeDraggable(bg, bg)
 makeDraggable(ImgBtn, ImgBtn)
 
--- SCRIPT COUNTER PET TERSEMBUNYI (Disesuaikan Temanya Menjadi Gelap)
+-- SCRIPT COUNTER PET TERSEMBUNYI
 local counterGui = Instance.new("ScreenGui", game.CoreGui)
 counterGui.Name = "ZorVexPetCounter"
 
