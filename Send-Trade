@@ -1,0 +1,31 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+local tradingEvent = ReplicatedStorage:FindFirstChild("rEvents") and ReplicatedStorage.rEvents:FindFirstChild("tradingEvent") 
+
+local targetPlayerName = "Zor_Twin1"             
+local autoTradeActive = true                 
+
+local function isTradePending()
+    return player:FindFirstChild("CurrentTrade") ~= nil
+end
+
+local function mainTradeLoop()
+    while true do
+        if autoTradeActive and tradingEvent then
+            local selectedPlayer = Players:FindFirstChild(targetPlayerName)
+            
+            if selectedPlayer and not isTradePending() then
+                pcall(function() 
+                    tradingEvent:FireServer("sendTradeRequest", selectedPlayer) 
+                end)
+            end
+        end
+        
+        task.wait(0.1)
+    end
+end
+
+task.spawn(mainTradeLoop)
+
+-- Zor_Larry, Zor_Golden, Zor_Hank, Zor_Hawk, Zor_Neon, Zor_Darkstar, Zor_Hedgehog
