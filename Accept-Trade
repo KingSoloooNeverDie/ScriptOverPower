@@ -1,0 +1,18 @@
+local event = game.ReplicatedStorage.rEvents.tradingEvent
+local lp = game.Players.LocalPlayer
+local ALLOWED_USERNAME = "Zor_Twin1"
+
+event.OnClientEvent:Connect(function(action, fromPlayer)
+    if action == "tradeRequest" and fromPlayer ~= lp then
+        if fromPlayer.Name == ALLOWED_USERNAME then
+            event:FireServer("requestAccepted", fromPlayer)
+        end
+    end
+end)
+
+while true do
+    event:FireServer("acceptTrade")
+    task.wait(0.4)
+end
+
+-- Zor_Larry, Zor_Golden, Zor_Hank, Zor_Hawk, Zor_Neon, Zor_Darkstar, Zor_Hedgehog
