@@ -1,6 +1,6 @@
 local event = game.ReplicatedStorage.rEvents.tradingEvent
 local lp = game.Players.LocalPlayer
-local ALLOWED_USERNAME = "Zor_Twin1"
+local ALLOWED_USERNAME = "Zor_Twin"
 
 event.OnClientEvent:Connect(function(action, fromPlayer)
     if action == "tradeRequest" and fromPlayer ~= lp then
