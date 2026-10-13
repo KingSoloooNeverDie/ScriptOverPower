@@ -3,7 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local tradingEvent = ReplicatedStorage:FindFirstChild("rEvents") and ReplicatedStorage.rEvents:FindFirstChild("tradingEvent") 
 
-local targetPlayerName = "Zor_Twin1"             
+local targetPlayerName = "Zor_Twin"             
 local autoTradeActive = true                 
 
 local function isTradePending()
