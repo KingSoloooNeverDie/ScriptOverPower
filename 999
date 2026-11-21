@@ -15,8 +15,6 @@ localPlayer.Idled:Connect(function()
 end)
 
 -- Boss Anti Dc
-loadstring(game:HttpGet("https://raw.githubusercontent.com/KingSoloooNeverDie/ScriptOverPower/refs/heads/main/KullBosss"))()
-
-loadstring(game:HttpGet("https://raw.githubusercontent.com/KingSoloooNeverDie/ScriptOverPower/refs/heads/main/HealthBoss"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/KingSoloooNeverDie/ScriptOverPower/refs/heads/main/BossFarm"))()
 
 loadstring(game:HttpGet("https://raw.githubusercontent.com/KingSoloooNeverDie/ScriptOverPower/refs/heads/main/Fps"))()
