@@ -1031,7 +1031,7 @@ task.spawn(function()
 		elseif string.find(activeNameLower, "boss4") or string.find(activeNameLower, "boss5") or string.find(activeNameLower, "bossrainbow") then
 			offsetX, offsetY, offsetZ = 0, 145, 0
 		elseif isAlienTarget then
-			offsetX, offsetY, offsetZ = 0, 20, 0 -- khusus Alien Boss
+			offsetX, offsetY, offsetZ = 0, 30, 0 -- khusus Alien Boss
 		end
 
 		local interruptedByMainBoss = false
